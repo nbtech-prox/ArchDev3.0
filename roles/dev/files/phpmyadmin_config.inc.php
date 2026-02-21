@@ -6,6 +6,9 @@
  * para conexão segura com MariaDB.
  */
 
+// Server index
+$i = 1;
+
 // Verbose name para o servidor
 $cfg['Servers'][$i]['verbose'] = 'ArchDev Local';
 

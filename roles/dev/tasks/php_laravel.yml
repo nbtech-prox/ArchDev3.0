@@ -189,6 +189,24 @@
   notify: Restart Apache
   tags: [dev, apache]
 
+- name: Load PHP module in Apache (mod_php)
+  lineinfile:
+    path: /etc/httpd/conf/httpd.conf
+    line: "LoadModule php_module modules/libphp.so"
+    insertafter: '^LoadModule'
+    state: present
+  notify: Restart Apache
+  tags: [dev, apache, php]
+
+- name: Add PHP handler in Apache
+  lineinfile:
+    path: /etc/httpd/conf/httpd.conf
+    line: "AddHandler php-script .php"
+    insertafter: 'LoadModule php_module'
+    state: present
+  notify: Restart Apache
+  tags: [dev, apache, php]
+
 - name: Start and enable Apache service
   systemd:
     name: httpd
