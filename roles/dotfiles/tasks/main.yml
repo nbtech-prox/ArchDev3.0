@@ -65,34 +65,45 @@
     mode: '0644'
   tags: [dotfiles, config, hypr]
 
-- name: Sync Hyprland scripts and other configs
-  synchronize:
-    src: "{{ role_path }}/files/hypr/"
-    dest: "{{ target_home }}/.config/hypr/"
-    recursive: yes
-    delete: no
-    rsync_opts:
-      - "--exclude=hyprland.conf"
-  become: no
+- name: Copy Hyprland auxiliary configs (hypridle, hyprlock)
+  copy:
+    src: "{{ role_path }}/files/hypr/{{ item }}"
+    dest: "{{ target_home }}/.config/hypr/{{ item }}"
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+    mode: '0644'
+  loop:
+    - hypridle.conf
+    - hyprlock.conf
   tags: [dotfiles, config, hypr]
 
-- name: Ensure Hyprland scripts are executable
+- name: Ensure Hyprland scripts directory exists
   file:
-    path: "{{ target_home }}/.config/hypr/scripts/{{ item }}"
+    path: "{{ target_home }}/.config/hypr/scripts"
+    state: directory
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
     mode: '0755'
-  loop:
-    - clipboard-manager.sh
-    - night-mode.sh
-  become: no
+  tags: [dotfiles, config, hypr]
+
+- name: Copy Hyprland scripts
+  copy:
+    src: "{{ role_path }}/files/hypr/scripts/"
+    dest: "{{ target_home }}/.config/hypr/scripts/"
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+    mode: '0755'
+    directory_mode: '0755'
   tags: [dotfiles, config, hypr]
 
 # --- Other Configs ---
-- name: Sync Configuration Directories (Waybar, Kitty, etc.)
-  synchronize:
+- name: Copy Configuration Directories (Waybar, Kitty, etc.)
+  copy:
     src: "{{ role_path }}/files/{{ item }}/"
     dest: "{{ target_home }}/.config/{{ item }}/"
-    recursive: yes
-    delete: yes
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+    directory_mode: '0755'
   loop:
     - waybar
     - kitty
@@ -102,17 +113,25 @@
     - nvim
     - starship
     - zathura
-  become: no
   tags: [dotfiles, config]
-  # synchronize uses rsync, so ensure rsync is installed (base-devel/pacman)
 
-- name: Sync Zsh Configuration
-  synchronize:
+- name: Ensure Waybar scripts are executable
+  file:
+    path: "{{ target_home }}/.config/waybar/scripts"
+    state: directory
+    recurse: yes
+    mode: '0755'
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+  tags: [dotfiles, config]
+
+- name: Copy Zsh Configuration
+  copy:
     src: "{{ role_path }}/files/zsh/"
     dest: "{{ target_home }}/.config/zsh/"
-    recursive: yes
-    delete: yes
-  become: no
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+    directory_mode: '0755'
   tags: [dotfiles, zsh]
 
 - name: Link .zshrc

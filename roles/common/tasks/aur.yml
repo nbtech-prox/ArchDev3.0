@@ -6,8 +6,8 @@
 - name: Check if yay is installed
   command: which yay
   register: yay_check
-  ignore_errors: true
   changed_when: false
+  failed_when: false
   tags: [aur, yay]
 
 - name: Remove old yay build directory
