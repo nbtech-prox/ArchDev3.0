@@ -24,6 +24,7 @@ sudo archdev-mariadb-setup
 ### Helpers disponíveis em ~/.config/helpers/
 - `archdev-bitwarden-setup` - Configurar Bitwarden
 - `archdev-mariadb-setup` - Configurar MariaDB
+- `archdev-backup-keys` - Backup de chaves SSH + GPG
 - `git-autosync` - Sincronização automática de repos
 
 ## 4. Atalhos Principais
@@ -32,12 +33,13 @@ sudo archdev-mariadb-setup
 - `Super + Enter` → Terminal (Kitty)
 - `Super + B` → Firefox
 - `Super + E` → File Manager (Thunar)
-- `Super + Space` → Rofi (apps)
-- `Super + P` → Bitwarden (passwords)
+- `Super + R` → Rofi (apps)
+- `Super + P` → Bitwarden (passwords via rofi-rbw)
 - `Super + Shift + E` → Emojis
 - `Super + Shift + C` → Calculadora
-- `Super + L` → Bloquear tela
-- `Super + X` → Menu de energia
+- `Super + Escape` → Bloquear tela
+- `Super + O` → Menu de energia (wlogout)
+- `Super + X` → Sair do Hyprland
 
 ### Night Mode
 - `Super + Shift + N` → Toggle night mode (filtro luz azul)

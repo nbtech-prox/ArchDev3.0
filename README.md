@@ -1,6 +1,6 @@
 # ❄️ ArchDev v3.0 - The Elite Developer Infrastructure (Ansible Edition)
 
-![Preview](roles/desktop/files/preview_nord.png)
+<!-- TODO: Adicionar screenshot do ambiente (substituir preview_nord.png) -->
 
 <div align="center">
 
@@ -53,7 +53,7 @@ O **ArchDev v3.0** não é apenas uma atualização visual. É uma evolução na
     - **phpMyAdmin**: Pré-configurado via Apache e Socket Unix.
 - **Python Ecosystem**: Poetry + Pyenv (via ASDF) para gestão hermética (`bubble p`).
 - **Docker**: Configurado (rootless opcional) e `docker-compose`.
-- **Password Manager**: `pass` + `rofi-pass` (Super+P) para gestão segura de passwords.
+- **Password Manager**: `rbw` (Bitwarden CLI) + `rofi-rbw` (Super+P) para gestão segura de passwords.
 - **Segurança**: Fail2ban (proteção SSH), UFW firewall, auditoria Lynis
 
 ---
@@ -119,23 +119,22 @@ docker run hello-world
 ### 3. Spotify
 O Spotify e o tema Catppuccin já estão instalados. Basta abrir o Spotify uma vez para ativar.
 
-### 4. Password Manager (pass)
-O `pass` é um gestor de passwords que usa criptografia GPG. Precisas de criar uma chave GPG primeiro:
+### 4. Password Manager (Bitwarden via rbw)
+O `rbw` é um cliente CLI não-oficial do Bitwarden. Configura com:
 
 ```bash
-# Configura automaticamente (cria chave GPG + inicializa pass)
-archdev-pass-setup
+# Configura automaticamente
+archdev-bitwarden-setup
 
 # Durante o setup, vai pedir:
-# - Nome real
-# - Email
-# - Password para proteger a chave (guarda bem!)
+# - Email da conta Bitwarden
+# - Master password
 ```
 
 Depois de configurado:
-- `Super+P` → Abrir rofi-pass (procurar passwords)
-- `pass insert github.com/user` → Adicionar nova password (CLI)
-- `pass generate site.com 20` → Gerar password aleatória de 20 chars
+- `Super+P` → Abrir rofi-rbw (procurar passwords)
+- `rbw get github.com` → Obter password (CLI)
+- `rbw generate` → Gerar password aleatória
 
 ### 5. Backup de Chaves de Segurança (Importante!)
 Faça backup das tuas chaves SSH e GPG:
@@ -204,14 +203,15 @@ O teu ambiente inclui o serviço `git-autosync` que é instalado e corre em back
 | `Super + Enter` | Abrir Terminal (Kitty) |
 | `Super + B` | Abrir Browser (Firefox) |
 | `Super + E` | Abrir Explorador (Thunar) |
-| `Super + Space` | Lançador de Apps (Rofi) |
-| `Super + P` | Password Manager (rofi-pass) |
+| `Super + R` | Lançador de Apps (Rofi) |
+| `Super + P` | Password Manager (rofi-rbw) |
 | `Super + V` | Clipboard Manager (GUI com histórico) |
 | `Super + Shift + V` | Toggle Floating Window |
 | `Super + Shift + N` | Toggle Night Mode (luz azul) |
 | `Super + Q` | Fechar Janela Ativa |
-| `Super + X` | Menu de Energia (Wlogout) |
-| `Super + L` | Bloquear Ecrã (Hyprlock) |
+| `Super + O` | Menu de Energia (Wlogout) |
+| `Super + Escape` | Bloquear Ecrã (Hyprlock) |
+| `Super + X` | Sair do Hyprland |
 | `Super + Setas` | Mover Foco |
 | `Super + Shift + Setas` | Mover Janela |
 | `Super + 1-9` | Mudar Workspace |
@@ -325,9 +325,9 @@ Scripts instalados automaticamente:
 
 | Comando | Descrição |
 | :--- | :--- |
+| `archdev-bitwarden-setup` | Configura Bitwarden (rbw) |
 | `archdev-mariadb-setup` | Configura MariaDB com password segura |
 | `archdev-backup-keys` | Backup de chaves SSH + GPG |
-| `archdev-pass-setup` | Configura password manager (pass) |
 
 ---
 
@@ -351,8 +351,8 @@ Scripts instalados automaticamente:
 - Comando: `sudo fail2ban-client status`
 
 ### 4. Password Manager (Proteção de Credenciais)
-- `pass` + GPG: passwords cifradas localmente
-- Integração rofi: `Super+P`
+- `rbw` (Bitwarden CLI): passwords cifradas na cloud Bitwarden
+- Integração rofi: `Super+P` (rofi-rbw)
 
 ### 5. Auditoria de Sistema (Lynis)
 - Lynis: ferramenta de auditoria de segurança
