@@ -103,7 +103,7 @@
   changed_when: "'already backed up' not in spicetify_theme.stderr"
 
 - include_tasks: assets.yml
-  tags: [desktop, assets]
+  tags: [desktop, assets, wallpaper]
 
 - name: Enable display manager (SDDM)
   systemd:
