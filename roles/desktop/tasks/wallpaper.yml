@@ -35,16 +35,19 @@
     group: "{{ target_user }}"
     mode: '0644'
   when: not repo_wallpaper.stat.exists or repo_wallpaper.stat.size < 1000
+  register: fallback_wallpaper
   ignore_errors: yes
   tags: [desktop, wallpaper]
 
-- name: Download Arch Linux Catppuccin wallpaper (alternative)
+- name: Download Arch Linux Catppuccin wallpaper (alternative if first failed)
   get_url:
     url: "https://raw.githubusercontent.com/catppuccin/wallpapers/main/misc/catppuccin_triangle.png"
     dest: "{{ target_home }}/.config/wallpapers/wallpaper.png"
     owner: "{{ target_user }}"
     group: "{{ target_user }}"
     mode: '0644'
-  when: not repo_wallpaper.stat.exists or repo_wallpaper.stat.size < 1000
+  when:
+    - (not repo_wallpaper.stat.exists or repo_wallpaper.stat.size < 1000)
+    - fallback_wallpaper is failed
   ignore_errors: yes
   tags: [desktop, wallpaper]

@@ -27,7 +27,8 @@ exec-once = hypridle
 # Night Mode Dinâmico (Filtro de luz azul adaptativo à hora de Lisboa: 38.7,-9.1)
 exec-once = wlsunset -l 38.7 -L -9.1 &
 # Nota: O Night Mode pode ser forçado/desligado com Super+Shift+N
-exec-once = numlockx on  # Ativar NumLock no arranque
+# Aplicar temas GTK/cursor/icon via gsettings (requer sessão D-Bus ativa)
+exec-once = ~/.config/hypr/scripts/gtk.sh
 
 # --- DEFINIÇÃO DE PROGRAMAS ---
 $terminal = kitty
@@ -79,6 +80,7 @@ input {
 
     follow_mouse = 1
     sensitivity = 0
+    numlock_by_default = true
 }
 
 # --- APARÊNCIA GERAL ---

@@ -65,7 +65,6 @@ packages_dev_tools:
   - neovim
   - lazygit
   - make
-  - base-devel
   - docker
   - docker-compose
   - direnv
@@ -135,7 +134,6 @@ packages_system:
   - firefox
   - mpv
   - inkscape
-  - numlockx  # Para ativar NumLock no arranque
   # Kernel Headers
   - linux-lts-headers
   - linux-headers

@@ -27,6 +27,34 @@ fi
 echo -e "${GREEN}✅ Arch Linux detectado${NC}"
 echo ""
 
+# --- Captura segura da password sudo ---
+# Pedimos a password uma única vez, validamos, e passamos ao Ansible
+# via ficheiro temporário seguro (evita o problema de 'Duplicate become password prompt')
+echo -e "${BLUE}🔐 Para instalar o ArchDev 3.0 é necessário acesso de administrador (sudo).${NC}"
+echo -n "   Password sudo: "
+read -s SUDO_PASS
+echo ""
+
+# Valida a password antes de continuar
+if ! echo "$SUDO_PASS" | sudo -S true 2>/dev/null; then
+    echo -e "${RED}❌ ERRO: Password sudo incorreta!${NC}"
+    exit 1
+fi
+echo -e "${GREEN}✅ Autenticação confirmada${NC}"
+echo ""
+
+# Cria ficheiro temporário seguro para a password
+PASS_FILE=$(mktemp /tmp/.archdev-pass-XXXXXX)
+chmod 600 "$PASS_FILE"
+echo "$SUDO_PASS" > "$PASS_FILE"
+unset SUDO_PASS  # Limpa da memória
+
+# Garante limpeza do ficheiro em qualquer cenário (erro, Ctrl+C, etc.)
+cleanup() {
+    rm -f "$PASS_FILE" 2>/dev/null
+}
+trap cleanup EXIT INT TERM
+
 # 1. Update e instalação do Ansible (garante que temos o motor)
 if ! command -v ansible &> /dev/null
 then
@@ -52,7 +80,8 @@ echo ""
 
 # 4. Execução do Playbook Principal
 echo -e "${BLUE}>>> Aplicando configurações do ArchDev 3.0 (Isso pode demorar)...${NC}"
-# -K pede a senha de sudo no início (necessário para yay/AUR)
-ansible-playbook playbooks/site.yml -K
+ansible-playbook playbooks/site.yml --become-password-file="$PASS_FILE"
 
+echo ""
 echo -e "${GREEN}>>> Instalação Concluída! Reinicie a sessão para aplicar todas as mudanças.${NC}"
+

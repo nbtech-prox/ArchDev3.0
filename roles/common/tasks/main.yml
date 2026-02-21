@@ -1,5 +1,42 @@
 ---
-# --- Firewall ---
+# ============================================
+# 1. INSTALL - Pacotes base e sistema
+# ============================================
+
+- name: Update system packages (Arch Linux)
+  pacman:
+    update_cache: yes
+    upgrade: yes
+  tags: [system, update]
+
+- name: Install base system utilities
+  pacman:
+    name: "{{ packages_system + packages_admin }}"
+    state: present
+  tags: [system, base]
+
+# ============================================
+# 2. SERVICES - Ativar serviços essenciais
+# ============================================
+# Nota: Os pacotes já estão instalados acima (ufw, openssh, etc.)
+
+- name: Enable essential services
+  systemd:
+    name: "{{ item }}"
+    enabled: yes
+    state: started
+  loop:
+    - ufw
+    - sshd
+    - NetworkManager
+    - bluetooth
+  ignore_errors: true
+  tags: [system, services]
+
+# ============================================
+# 3. FIREWALL - Configurar UFW (já instalado)
+# ============================================
+
 - name: Configure UFW Defaults
   ufw:
     state: enabled
@@ -37,36 +74,17 @@
   become: yes
   tags: [system, firewall]
 
-- name: Update system packages (Arch Linux)
-  pacman:
-    update_cache: yes
-    upgrade: yes
-  tags: [system, update]
+# ============================================
+# 4. AUR - Yay e pacotes AUR
+# ============================================
 
-- name: Install base system utilities
-  pacman:
-    name: "{{ packages_system + packages_admin + ['rsync'] }}"
-    state: present
-  tags: [system, base]
-
-- name: Enable essential services
-  systemd:
-    name: "{{ item }}"
-    enabled: yes
-    state: started
-  loop:
-    - ufw
-    - sshd
-    - NetworkManager
-    - bluetooth
-  ignore_errors: true
-  tags: [system, services]
-
-# Include AUR tasks
 - include_tasks: aur.yml
   tags: [aur]
 
-# --- Security Hardening ---
+# ============================================
+# 5. SECURITY - Fail2ban e hardening
+# ============================================
+
 - name: Configure Fail2ban for SSH protection
   copy:
     src: fail2ban-ssh.conf

@@ -1,4 +1,11 @@
 ---
+# --- Configure ZSH (instalado no role desktop) ---
+- name: Configure Zsh as default shell
+  user:
+    name: "{{ target_user }}"
+    shell: /usr/bin/zsh
+  tags: [dotfiles, shell]
+
 # --- Dotfiles Configuration ---
 - name: Ensure .config directory exists
   file:
@@ -139,6 +146,7 @@
     owner: "{{ target_user }}"
     group: "{{ target_user }}"
     mode: '0644'
+  become: no
   tags: [dotfiles, theme]
 
 - name: Deploy GTK4 config
@@ -148,6 +156,7 @@
     owner: "{{ target_user }}"
     group: "{{ target_user }}"
     mode: '0644'
+  become: no
   tags: [dotfiles, theme]
 
 - name: Deploy qt5ct config
@@ -157,6 +166,7 @@
     owner: "{{ target_user }}"
     group: "{{ target_user }}"
     mode: '0644'
+  become: no
   tags: [dotfiles, theme]
 
 - name: Deploy qt6ct config
@@ -166,6 +176,7 @@
     owner: "{{ target_user }}"
     group: "{{ target_user }}"
     mode: '0644'
+  become: no
   tags: [dotfiles, theme]
 
 - name: Deploy Kvantum config
@@ -175,4 +186,5 @@
     owner: "{{ target_user }}"
     group: "{{ target_user }}"
     mode: '0644'
+  become: no
   tags: [dotfiles, theme]

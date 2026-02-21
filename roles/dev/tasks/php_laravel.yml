@@ -110,6 +110,13 @@
     mode: '0755'
   tags: [dev, php, composer]
 
+- name: Initialize MariaDB data directory (required on fresh install)
+  command: mariadb-install-db --user=mysql --basedir=/usr --datadir=/var/lib/mysql
+  args:
+    creates: /var/lib/mysql/mysql  # Só corre se ainda não foi inicializado
+  become: yes
+  tags: [dev, mariadb]
+
 - name: Start and enable MariaDB service
   systemd:
     name: mariadb

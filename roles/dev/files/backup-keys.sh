@@ -65,7 +65,7 @@ cat > "$BACKUP_DIR/README-RESTORE.md" << 'EOF'
 mkdir -p ~/.ssh
 chmod 700 ~/.ssh
 cp ssh/* ~/.ssh/
-chmod 600 ~/.ssh/id_*~/.ssh/id_*.pub
+chmod 600 ~/.ssh/id_* ~/.ssh/id_*.pub
 ```
 
 ## GPG

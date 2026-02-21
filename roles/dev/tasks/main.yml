@@ -5,7 +5,7 @@
 
 - name: Install Developer Tools
   pacman:
-    name: "{{ packages_dev_tools + packages_terminal }}"
+    name: "{{ packages_dev_tools }}"
     state: present
   become: yes
   tags: [dev, tools]
@@ -42,6 +42,9 @@
     enabled: yes
     state: started
   become: yes
+  tags: [dev, docker]
+
+- include_tasks: docker_helper.yml
   tags: [dev, docker]
 
 # --------------------------------------------------------
@@ -156,37 +159,9 @@
   become: yes
   tags: [dev, security, helpers]
 
-- name: Create backup keys notice
-  copy:
-    content: |
-      ================================================
-      🔐 BACKUP DE CHAVES DE SEGURANÇA
-      ================================================
-      
-      Execute regularmente:
-         archdev-backup-keys
-         
-      Ou diretamente:
-         ~/.config/helpers/backup-keys.sh
-      
-      ================================================
-    dest: "{{ target_home }}/.config/helpers/keys-backup-notice.txt"
-    owner: "{{ target_user }}"
-    group: "{{ target_user }}"
-    mode: '0644'
-  tags: [dev, security, helpers]
-
 # --------------------------------------------------------
-# MariaDB Setup
+# MariaDB Setup (service enable/start está em php_laravel.yml)
 # --------------------------------------------------------
-
-- name: Enable MariaDB Service
-  systemd:
-    name: mariadb
-    enabled: yes
-    state: started
-  become: yes
-  tags: [dev, mariadb]
 
 - name: Install MariaDB setup helper
   copy:
@@ -206,22 +181,65 @@
   become: yes
   tags: [dev, mariadb, helpers]
 
-- name: Create MariaDB notice
+# --------------------------------------------------------
+# Post-Install Summary (notificação consolidada)
+# --------------------------------------------------------
+
+- name: Create consolidated post-install helpers guide
   copy:
     content: |
-      ================================================
-      🗄️  MARIADB SETUP
-      ================================================
-      
-      Execute:
-         sudo archdev-mariadb-setup
-         
-      Ou diretamente:
-         sudo ~/.config/helpers/mariadb-setup.sh
-      
-      ================================================
-    dest: "{{ target_home }}/.config/helpers/mariadb-notice.txt"
+      ╔══════════════════════════════════════════════════════╗
+      ║          🚀 ArchDev 3.0 — Pós-Instalação           ║
+      ╠══════════════════════════════════════════════════════╣
+      ║                                                      ║
+      ║  Os seguintes comandos estão disponíveis para        ║
+      ║  completar a configuração do seu ambiente:           ║
+      ║                                                      ║
+      ║  1. 🔐 Bitwarden (Password Manager)                 ║
+      ║     $ archdev-bitwarden-setup                        ║
+      ║     Configura rbw + rofi-rbw com a sua conta.        ║
+      ║     Depois use Super+P para aceder passwords.        ║
+      ║                                                      ║
+      ║  2. 🗄️  MariaDB (Base de Dados)                      ║
+      ║     $ sudo archdev-mariadb-setup                     ║
+      ║     Securiza MariaDB: password root, remove test DB. ║
+      ║     Necessário antes de usar phpMyAdmin.             ║
+      ║                                                      ║
+      ║  3. 🔑 Backup de Chaves                              ║
+      ║     $ archdev-backup-keys                            ║
+      ║     Exporta SSH + GPG keys para backup seguro.       ║
+      ║     Execute após configurar as suas chaves.          ║
+      ║                                                      ║
+      ║  📁 Scripts em: ~/.config/helpers/                   ║
+      ║  📖 Documentação: cat POST-INSTALL.md                ║
+      ║                                                      ║
+      ╚══════════════════════════════════════════════════════╝
+    dest: "{{ target_home }}/.config/helpers/POST-INSTALL.txt"
     owner: "{{ target_user }}"
     group: "{{ target_user }}"
     mode: '0644'
-  tags: [dev, mariadb, helpers]
+  tags: [dev, helpers]
+
+- name: "🚀 POST-INSTALL: Scripts disponíveis para configuração"
+  debug:
+    msg: |
+
+      ══════════════════════════════════════════════════════
+       🚀 ArchDev 3.0 — SCRIPTS PÓS-INSTALAÇÃO
+      ══════════════════════════════════════════════════════
+
+       Os seguintes comandos estão prontos a usar:
+
+       1. 🔐 archdev-bitwarden-setup
+          → Configura Bitwarden (password manager)
+
+       2. 🗄️  sudo archdev-mariadb-setup
+          → Securiza MariaDB (gera password root)
+
+       3. 🔑 archdev-backup-keys
+          → Backup das chaves SSH + GPG
+
+       📁 Todos os scripts em: ~/.config/helpers/
+
+      ══════════════════════════════════════════════════════
+  tags: [dev, helpers]

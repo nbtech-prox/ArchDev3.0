@@ -48,7 +48,26 @@
   tags: [aur, yay]
 
 # ============================================
-# 2. PACOTES AUR - COM VERIFICAÇÃO
+# 2. SUDOERS TEMPORÁRIO PARA YAY/PACMAN
+# ============================================
+# yay corre como utilizador normal (become: false) mas internamente
+# chama 'sudo pacman -U' para instalar os pacotes compilados.
+# Num contexto Ansible não-interativo, o sudo não consegue pedir password.
+# Solução: criar entrada NOPASSWD temporária para pacman, remover no final.
+
+- name: Create temporary NOPASSWD sudoers for pacman (required by yay)
+  copy:
+    content: "{{ target_user }} ALL=(ALL) NOPASSWD: /usr/bin/pacman"
+    dest: /etc/sudoers.d/99-archdev-aur-temp
+    owner: root
+    group: root
+    mode: '0440'
+    validate: 'visudo -cf %s'
+  become: true
+  tags: [aur, packages]
+
+# ============================================
+# 3. PACOTES AUR - COM VERIFICAÇÃO
 # ============================================
 
 # Divide em essenciais (falha se não instalar) e opcionais (avisa só)
@@ -122,7 +141,18 @@
   tags: [aur, packages]
 
 # ============================================
-# 3. REPORT DE STATUS
+# 4. REMOVER SUDOERS TEMPORÁRIO (Segurança)
+# ============================================
+
+- name: Remove temporary NOPASSWD sudoers (security cleanup)
+  file:
+    path: /etc/sudoers.d/99-archdev-aur-temp
+    state: absent
+  become: true
+  tags: [aur, packages]
+
+# ============================================
+# 5. REPORT DE STATUS
 # ============================================
 
 - name: Report missing essential packages
