@@ -5,10 +5,10 @@
   
   pre_tasks:
     # --- SUDO TIMEOUT (PRIMEIRO DE TUDO - evita prompts de senha) ---
-    - name: Configure sudo timeout (90 minutes)
+    - name: Configure sudo timeout (30 minutes)
       lineinfile:
         path: /etc/sudoers.d/timeout
-        line: 'Defaults timestamp_timeout=90'
+        line: 'Defaults timestamp_timeout=30'
         create: yes
         owner: root
         group: root
