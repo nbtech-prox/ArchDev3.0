@@ -51,3 +51,35 @@
     - fallback_wallpaper is failed
   ignore_errors: yes
   tags: [desktop, wallpaper]
+
+# --- Garantir permissões corretas (fix para swww) ---
+- name: Ensure .config directory has correct ownership (fix parent permissions)
+  file:
+    path: "{{ target_home }}/.config"
+    state: directory
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+    mode: '0755'
+  tags: [desktop, wallpaper]
+
+- name: Ensure wallpaper file has correct permissions for swww
+  file:
+    path: "{{ target_home }}/.config/wallpapers/wallpaper.png"
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+    mode: '0644'
+  ignore_errors: yes
+  tags: [desktop, wallpaper]
+
+- name: Verify wallpaper was deployed
+  stat:
+    path: "{{ target_home }}/.config/wallpapers/wallpaper.png"
+  register: wallpaper_deployed
+  tags: [desktop, wallpaper]
+
+- name: Report wallpaper status
+  debug:
+    msg: >-
+      {{ '✅ Wallpaper deployed successfully (' ~ wallpaper_deployed.stat.size ~ ' bytes)'
+         if wallpaper_deployed.stat.exists
+         else '❌ WARNING: Wallpaper NOT deployed! swww will show no background.' }}
