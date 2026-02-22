@@ -1,77 +1,116 @@
+add_newline = true
+palette = "mocha"
+command_timeout = 1000
+
 format = """
-[](#313244)\
-$os\
-$username\
-[](bg:#45475a fg:#313244)\
+[](fg:#1e1e2e)\
+[ ](bg:#1e1e2e fg:#ffffff)\
+[](fg:#1e1e2e bg:#89b4fa)\
 $directory\
-[](fg:#45475a bg:#585b70)\
 $git_branch\
 $git_status\
-[](fg:#585b70 bg:#89b4fa)\
-$nodejs\
-$php\
-$python\
-$rust\
-[](fg:#89b4fa bg:#94e2d5)\
-$docker_context\
-[](fg:#94e2d5 bg:#1e1e2e)\
+[](fg:#89b4fa bg:#1e1e2e)\
+$fill\
+[](fg:#313244 bg:#1e1e2e)\
+[ ⚡ ](bg:#313244 fg:#f9e2af)\
 $time\
-[ ](fg:#1e1e2e)\
+[](fg:#313244)\
+\n$character
 """
+# =========================
+# Catppuccin Mocha
+# =========================
+[palettes.mocha]
+base = "#1e1e2e"
+surface0 = "#313244"
+overlay0 = "#6c7086"
+text = "#cdd6f4"
+blue = "#89b4fa"
+green = "#a6e3a1"
+peach = "#fab387"
+yellow = "#f9e2af"
+mauve = "#cba6f7"
+red = "#f38ba8"
 
-[username]
-show_always = true
-style_user = "bg:#313244"
-style_root = "bg:#313244"
-format = '[$user ]($style)'
-
-[os]
-style = "bg:#313244"
-disabled = false
-
+# =========================
+# Directory
+# =========================
 [directory]
-style = "bg:#45475a"
-format = "[ $path ]($style)"
+style = "bg:#89b4fa fg:#1e1e2e"
+format = "[ $path]($style)"
 truncation_length = 3
-truncation_symbol = "…/"
+truncate_to_repo = true
 
+# =========================
+# Git
+# =========================
 [git_branch]
-symbol = ""
-style = "bg:#585b70"
-format = '[[ $symbol $branch ](fg:#cdd6f4 bg:#585b70)]($style)'
+symbol = "  "
+style = "bg:blue fg:base"
+format = "[ $symbol$branch ]($style)"
 
 [git_status]
-style = "bg:#585b70"
-format = '[[($all_status$ahead_behind )](fg:#cdd6f4 bg:#585b70)]($style)'
+style = "bg:blue fg:base"
+ahead = "⇡${count}"
+behind = "⇣${count}"
+diverged = "⇕"
+modified = "●"
+staged = "+"
+renamed = "»"
+deleted = "✘"
+format = "[$all_status$ahead_behind]($style)"
 
+# =========================
+# NodeJS
+# =========================
 [nodejs]
-symbol = ""
-style = "bg:#89b4fa"
-format = '[[ $symbol ($version) ](fg:#11111b bg:#89b4fa)]($style)'
+symbol = " ⬢ "
+style = "bg:blue fg:red"
+format = "[ $symbol$version ]($style)"
 
+# =========================
+# PHP / Laravel
+# =========================
 [php]
-symbol = ""
-style = "bg:#89b4fa"
-format = '[[ $symbol ($version) ](fg:#11111b bg:#89b4fa)]($style)'
+symbol = "  "
+style = "bg:blue fg:mauve"
+format = "[ $symbol$version ]($style)"
 
+# =========================
+# Python
+# =========================
 [python]
-symbol = ""
-style = "bg:#89b4fa"
-format = '[[ $symbol ($version) ](fg:#11111b bg:#89b4fa)]($style)'
+symbol = " 🐍 "
+style = "bg:blue fg:yellow"
+format = "[ $symbol$version ]($style)"
 
-[rust]
-symbol = ""
-style = "bg:#89b4fa"
-format = '[[ $symbol ($version) ](fg:#11111b bg:#89b4fa)]($style)'
-
+# =========================
+# Docker
+# =========================
 [docker_context]
-symbol = ""
-style = "bg:#94e2d5"
-format = '[[ $symbol $context ](fg:#11111b bg:#94e2d5)]($style)'
+symbol = " 🐳 "
+style = "bg:blue fg:peach"
+format = "[ $symbol$context ]($style)"
 
+# =========================
+# Fill
+# =========================
+[fill]
+symbol = "·"
+style = "fg:overlay0 bg:base"
+
+# =========================
+# Time
+# =========================
 [time]
 disabled = false
-time_format = "%R"
-style = "bg:#1e1e2e"
-format = '[[  $time ](fg:#cdd6f4 bg:#1e1e2e)]($style)'
+time_format = "%I:%M:%S %p"
+style = "bg:surface0 fg:text"
+format = "[ at $time ]($style)"
 
+# =========================
+# Prompt
+# =========================
+[character]
+success_symbol = "[❯](bold blue)"
+error_symbol = "[❯](bold red)"
