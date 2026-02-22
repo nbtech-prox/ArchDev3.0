@@ -33,8 +33,11 @@ sudo archdev-mariadb-setup
 - `Super + Enter` → Terminal (Kitty)
 - `Super + B` → Firefox
 - `Super + E` → File Manager (Thunar)
-- `Super + R` → Rofi (apps)
+- `Super + Space` → Rofi (apps)
+- `Super + A` → IDE (Antigravity)
 - `Super + P` → Bitwarden (passwords via rofi-rbw)
+- `Super + V` → Clipboard Manager (histórico)
+- `Super + F` → Fullscreen
 - `Super + Shift + E` → Emojis
 - `Super + Shift + C` → Calculadora
 - `Super + Escape` → Bloquear tela

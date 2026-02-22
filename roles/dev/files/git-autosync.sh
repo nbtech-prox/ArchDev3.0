@@ -131,8 +131,8 @@ while true; do
         
         # Verifica se está ahead do remote
         if git rev-parse "@{u}" &>/dev/null; then
-            AHEAD_COUNT=$(git rev-list --count HEAD..@{u} 2>/dev/null || echo "0")
-            BEHIND_COUNT=$(git rev-list --count @{u}..HEAD 2>/dev/null || echo "0")
+            AHEAD_COUNT=$(git rev-list --count @{u}..HEAD 2>/dev/null || echo "0")
+            BEHIND_COUNT=$(git rev-list --count HEAD..@{u} 2>/dev/null || echo "0")
             
             # Se está behind (precisa de pull primeiro), avisa mas não faz nada
             if [ "$BEHIND_COUNT" -gt 0 ]; then

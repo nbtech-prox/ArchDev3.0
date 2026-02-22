@@ -32,13 +32,13 @@ COMANDOS RÁPIDOS
 --------------------------------------------------------------------------------
 
 # Listar todos os helpers
-ls -la ~/.config/archdev/helpers/
+ls -la ~/.config/helpers/
 
 # Ver conteúdo de um helper
-cat ~/.config/archdev/helpers/nome-do-helper.sh
+cat ~/.config/helpers/nome-do-helper.sh
 
 # Editar um helper (cuidado!)
-nvim ~/.config/archdev/helpers/nome-do-helper.sh
+nvim ~/.config/helpers/nome-do-helper.sh
 
 --------------------------------------------------------------------------------
 NOTAS

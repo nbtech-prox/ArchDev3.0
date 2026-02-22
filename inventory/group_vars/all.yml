@@ -56,6 +56,7 @@ packages_terminal:
   - fd
   - ripgrep
   - fzf
+  - zoxide
   - btop
   - fastfetch
   - tree-sitter-cli
@@ -68,7 +69,6 @@ packages_dev_tools:
   - docker
   - docker-compose
   - direnv
-  - antigravity
 
 packages_dev_web:
   - php
@@ -151,3 +151,9 @@ projects_dir: "/mnt/projetos"
 
 # --- Configuração do Sistema ---
 keyboard_layout: "pt"
+
+# --- Night Mode (wlsunset) ---
+# Coordenadas para o filtro de luz azul adaptativo
+# Use: https://www.latlong.net/ para encontrar as suas coordenadas
+wlsunset_latitude: "38.7"
+wlsunset_longitude: "-9.1"

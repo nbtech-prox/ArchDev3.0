@@ -1,56 +1,88 @@
-add_newline = true
-palette = "mocha"
-command_timeout = 1000
-
-format = """
-[](fg:#1e1e2e)\
-[ ](bg:#1e1e2e fg:#ffffff)\
-[](fg:#1e1e2e bg:#89b4fa)\
-$directory\
-$git_branch\
-$git_status\
-[](fg:#89b4fa bg:#1e1e2e)\
-$fill\
-[](fg:#313244 bg:#1e1e2e)\
-[ ⚡ ](bg:#313244 fg:#f9e2af)\
-$time\
-[](fg:#313244)\
-\n$character
+format = """\
+[╭╴](fg:arrow)\
+     $username\
+     $os\
+     $git_branch\
+(\
+    at \
+    $directory\
+)\
+    $fill $cmd_duration $time\
+(\
+    $python\
+    $nodejs\
+    $rust\
+    $php\
+)
+[╰─](fg:arrow)$character\
 """
-# =========================
-# Catppuccin Mocha
-# =========================
-[palettes.mocha]
-base = "#1e1e2e"
-surface0 = "#313244"
-overlay0 = "#6c7086"
-text = "#cdd6f4"
-blue = "#89b4fa"
-green = "#a6e3a1"
-peach = "#fab387"
-yellow = "#f9e2af"
-mauve = "#cba6f7"
-red = "#f38ba8"
+# Add the modules you need
 
-# =========================
-# Directory
-# =========================
+# Disable the blank line at the start of the prompt
+add_newline = true
+
+palette = "normal"
+
+[palettes.normal]
+arrow = "#B3BCFD"
+os = "#B3BCFD"
+os_admin = "#B3BCFD"
+directory = "#B3BCFD"
+time = "#B3BCFD"
+node = "#a5e6ba"
+php = "#B0B3D6"
+git = "#f17f29"
+git_status = "#DFEBED"
+python = "#FFD43B"
+java = "#F86279"
+rust = "#ffdac6"
+laravel = "#F05340"
+duration = "#ce4257"
+text_color = "#EDF2F4"
+text_light = "#26272A"
+
+[username]
+style_user = 'bold os'
+style_root = 'bold os_admin'
+format = '[  $user](fg:$style) '
+disabled = false
+show_always = true
+
+[character]
+success_symbol = "[>](fg:arrow)"
+error_symbol = "[>](fg:red)"
+
 [directory]
-style = "bg:#89b4fa fg:#1e1e2e"
-format = "[ $path]($style)"
-truncation_length = 3
+format = "[$path](bold $style)[$read_only]($read_only_style) "
+truncation_length = 2
+style = "fg:directory"
+read_only_style = "fg:directory"
+before_repo_root_style = "fg:directory"
+truncation_symbol = "…/"
 truncate_to_repo = true
+read_only ="  "
 
-# =========================
-# Git
-# =========================
+[time]
+disabled = false
+format = "[󱑈 $time]($style)"
+time_format = "%H:%M"
+style = "bold fg:time"
+
+[cmd_duration]
+disabled = false
+format = "took [ $duration]($style) "
+style = "bold fg:duration"
+min_time = 500
+
 [git_branch]
+format = "[$symbol$branch]($style) "
+style = "bold fg:git"
 symbol = "  "
-style = "bg:blue fg:base"
-format = "[ $symbol$branch ]($style)"
+disabled = false
 
 [git_status]
-style = "bg:blue fg:base"
+format = '[ $all_status$ahead_behind ]($style)'
+style = "bold fg:git_status"
 ahead = "⇡${count}"
 behind = "⇣${count}"
 diverged = "⇕"
@@ -58,59 +90,28 @@ modified = "●"
 staged = "+"
 renamed = "»"
 deleted = "✘"
-format = "[$all_status$ahead_behind]($style)"
+disabled = true
 
-# =========================
-# NodeJS
-# =========================
 [nodejs]
-symbol = " ⬢ "
-style = "bg:blue fg:red"
 format = "[ $symbol$version ]($style)"
-
-# =========================
-# PHP / Laravel
-# =========================
-[php]
-symbol = "  "
-style = "bg:blue fg:mauve"
-format = "[ $symbol$version ]($style)"
-
-# =========================
-# Python
-# =========================
-[python]
-symbol = " 🐍 "
-style = "bg:blue fg:yellow"
-format = "[ $symbol$version ]($style)"
-
-# =========================
-# Docker
-# =========================
-[docker_context]
-symbol = " 🐳 "
-style = "bg:blue fg:peach"
-format = "[ $symbol$context ]($style)"
-
-# =========================
-# Fill
-# =========================
-[fill]
-symbol = "·"
-style = "fg:overlay0 bg:base"
-
-# =========================
-# Time
-# =========================
-[time]
+style = "fg:node"
+symbol = " "
 disabled = false
-time_format = "%I:%M:%S %p"
-style = "bg:surface0 fg:text"
-format = "[ at $time ]($style)"
 
-# =========================
-# Prompt
-# =========================
-[character]
-success_symbol = "[❯](bold blue)"
-error_symbol = "[❯](bold red)"
+[python]
+format = '[ ${symbol}${pyenv_prefix}(${version})( \($virtualenv\)) ]($style)'
+style = "fg:python"
+symbol = " "
+disabled = false
+
+[php]
+format = "[ $symbol$version ]($style)"
+style = "fg:laravel"
+symbol = " "
+disabled = false
+
+[rust]
+format ="[ $symbol$version ]($style)"
+style = "fg:rust"
+symbol = " "
+disabled = false

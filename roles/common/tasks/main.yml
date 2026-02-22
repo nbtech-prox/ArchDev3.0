@@ -133,8 +133,8 @@
          - Rollback no boot (Limine)
          - 3 snapshots mantidos
       
-      4. Password Manager (pass)
-         - Passwords cifradas com GPG
+      4. Password Manager (rbw)
+         - Passwords cifradas na cloud Bitwarden
          - Integrado com rofi (Super+P)
       
       Comandos Úteis:

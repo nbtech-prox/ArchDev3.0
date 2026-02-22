@@ -15,7 +15,6 @@
         "hyprland/window"
     ],
     "modules-right": [
-        "tray",
         "custom/updates",
         "network",
         "bluetooth",

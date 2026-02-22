@@ -51,7 +51,7 @@ O **ArchDev v3.0** não é apenas uma atualização visual. É uma evolução na
     - **MariaDB Otimizado**: Configuração "Muscle Car" para 64GB RAM + NVMe.
     - **Apache**: Configurado com `mpm_prefork` e suporte a vhosts.
     - **phpMyAdmin**: Pré-configurado via Apache e Socket Unix.
-- **Python Ecosystem**: Poetry + Pyenv (via ASDF) para gestão hermética (`bubble p`).
+- **Python Ecosystem**: Poetry + Python (via ASDF) para gestão hermética (`bubble p`).
 - **Docker**: Configurado (rootless opcional) e `docker-compose`.
 - **Password Manager**: `rbw` (Bitwarden CLI) + `rofi-rbw` (Super+P) para gestão segura de passwords.
 - **Segurança**: Fail2ban (proteção SSH), UFW firewall, auditoria Lynis
@@ -203,9 +203,12 @@ O teu ambiente inclui o serviço `git-autosync` que é instalado e corre em back
 | `Super + Enter` | Abrir Terminal (Kitty) |
 | `Super + B` | Abrir Browser (Firefox) |
 | `Super + E` | Abrir Explorador (Thunar) |
-| `Super + R` | Lançador de Apps (Rofi) |
+| `Super + Space` | Lançador de Apps (Rofi) |
+| `Super + A` | Abrir IDE (Antigravity) |
 | `Super + P` | Password Manager (rofi-rbw) |
 | `Super + V` | Clipboard Manager (GUI com histórico) |
+| `Super + Shift + E` | Emojis (Rofi) |
+| `Super + Shift + C` | Calculadora (Rofi) |
 | `Super + Shift + V` | Toggle Floating Window |
 | `Super + Shift + N` | Toggle Night Mode (luz azul) |
 | `Super + Q` | Fechar Janela Ativa |
@@ -230,7 +233,7 @@ O teu ambiente inclui o serviço `git-autosync` que é instalado e corre em back
 | `Super + Tab` | Workspace Anterior |
 | `Super + Ctrl + Setas` | Workspace Seguinte/Anterior |
 | `Super + Ctrl + H/L` | Workspace Seguinte/Anterior (Vim-style) |
-| `Super + Shift + Setas` | Mover Janela para Workspace Adjacente |
+| `Super + Shift + Setas (←/→)` | Mover Janela para Workspace Adjacente |
 | `Super + Shift + H/L` | Mover Janela para Workspace Adjacente (Vim-style) |
 | `Super + Shift + 1-9` | Mover Janela para Workspace Específico |
 | `Super + S` | Toggle Special Workspace (Scratchpad) |
@@ -316,6 +319,18 @@ A tecla **Leader** é o `Espaço`.
 | :--- | :--- |
 | `bubble p` | Criar ambiente Python/Poetry (cria `.tool-versions` + direnv) |
 | `bubble l` | Criar ambiente Laravel/PHP (cria `.tool-versions` + direnv) |
+
+### 🚀 Dev Launcher (Atalhos ZSH)
+Atalhos rápidos no terminal para navegação inteligente de projetos:
+
+| Atalho | Função | Descrição |
+| :--- | :--- | :--- |
+| `Ctrl + T` | FZF file search | Pesquisar ficheiros com preview (`bat` / `eza tree`) |
+| `Ctrl + R` | FZF history | Pesquisar histórico de comandos |
+| `Alt + C` | FZF cd (Zoxide) | Navegar para diretório frequente via Zoxide |
+| `Alt + P` | `laravelf` | Fuzzy-find projetos Laravel (procura `artisan` em `$HOME` e `/mnt/projetos`) |
+| `Alt + G` | `gitf` | Fuzzy-find repositórios Git com preview de `git status` |
+| `Alt + D` | `dev_launcher` | Menu interativo Dev com 5 opções: Projects (Zoxide), Laravel, Git, Docker, Antigravity |
 
 ---
 
@@ -420,6 +435,18 @@ projects_dir: "/caminho/do/teu/disco"
 ```
 
 > **Nota**: Usa um caminho absoluto. Idealmente um disco separado para os teus projetos.
+
+### Night Mode (Localização)
+
+O filtro de luz azul (`wlsunset`) adapta-se automaticamente ao pôr/nascer do sol. Por padrão usa coordenadas de Lisboa. Para alterar:
+
+```yaml
+# inventory/group_vars/all.yml
+wlsunset_latitude: "40.7"    # Latitude da tua cidade
+wlsunset_longitude: "-74.0"  # Longitude da tua cidade
+```
+
+> 💡 **Dica**: Encontra as tuas coordenadas em [latlong.net](https://www.latlong.net/)
 
 ---
 
