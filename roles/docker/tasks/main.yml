@@ -1,0 +1,33 @@
+---
+- name: Ensure Docker packages are installed
+  pacman:
+    name:
+      - docker
+      - docker-compose
+    state: present
+  become: yes
+  tags: [dev, docker]
+
+- name: Add user to Docker group
+  user:
+    name: "{{ target_user }}"
+    groups: docker
+    append: yes
+  become: yes
+  tags: [dev, docker]
+
+- name: Enable Docker Service
+  systemd:
+    name: docker
+    enabled: yes
+    state: started
+  become: yes
+  tags: [dev, docker]
+
+- name: Include Docker helper tasks
+  include_tasks: docker_helper.yml
+  tags: [dev, docker]
+
+- name: Include Docker tuning tasks
+  include_tasks: docker_tuning.yml
+  tags: [dev, docker]

@@ -1,0 +1,6 @@
+[Unit]
+Description=Btrfs scrub on %I
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/btrfs scrub start -B %I

@@ -1,0 +1,17 @@
+---
+# Exemplo de host_vars para a tua workstation principal
+
+archdev_hardware_type: "baremetal"
+archdev_cpu_vendor: "amd"
+archdev_graphics_mode: "amd"
+archdev_enable_gpu_overrides: true
+archdev_sddm_theme: "catppuccin-auto"
+
+primary_gpu_drm_path: "/dev/dri/by-path/pci-0000:03:00.0-card"
+secondary_gpu_drm_path: "/dev/dri/by-path/pci-0000:0f:00.0-card"
+
+archdev_target_ram_mb: 65536
+archdev_enable_zram: true
+
+wlsunset_latitude: "38.7"
+wlsunset_longitude: "-9.1"

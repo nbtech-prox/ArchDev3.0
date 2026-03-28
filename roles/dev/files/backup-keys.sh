@@ -2,7 +2,8 @@
 # ArchDev - Backup de Chaves de Segurança
 # Faz backup das chaves SSH e GPG para recuperação em caso de desastre
 
-set -e
+set -euo pipefail
+umask 077
 
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
@@ -13,6 +14,16 @@ NC='\033[0m'
 BACKUP_DIR="$HOME/Backups/keys-$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$BACKUP_DIR"
 
+if ! command -v gpg >/dev/null 2>&1; then
+    echo -e "${RED}❌ gpg não está instalado.${NC}"
+    exit 1
+fi
+
+if ! command -v git >/dev/null 2>&1; then
+    echo -e "${RED}❌ git não está instalado.${NC}"
+    exit 1
+fi
+
 echo -e "${BLUE}🔐 ArchDev Keys Backup${NC}"
 echo "=========================================="
 echo ""
@@ -21,7 +32,8 @@ echo ""
 if [ -d "$HOME/.ssh" ]; then
     echo -e "${YELLOW}📁 A fazer backup das chaves SSH...${NC}"
     cp -r "$HOME/.ssh" "$BACKUP_DIR/"
-    chmod 600 "$BACKUP_DIR/.ssh"/* 2>/dev/null || true
+    find "$BACKUP_DIR/.ssh" -type d -exec chmod 700 {} \; 2>/dev/null || true
+    find "$BACKUP_DIR/.ssh" -type f -exec chmod 600 {} \; 2>/dev/null || true
     echo -e "${GREEN}✓ SSH keys backed up${NC}"
 else
     echo -e "${RED}⚠ Diretório .ssh não encontrado${NC}"
@@ -32,7 +44,7 @@ echo ""
 echo -e "${YELLOW}📁 A fazer backup das chaves GPG...${NC}"
 
 # Lista chaves secretas
-GPG_KEYS=$(gpg --list-secret-keys --keyid-format LONG 2>/dev/null | grep sec | awk '{print $2}' | cut -d'/' -f2)
+GPG_KEYS=$(gpg --list-secret-keys --keyid-format LONG 2>/dev/null | awk '/^sec/{print $2}' | cut -d'/' -f2 || true)
 
 if [ -z "$GPG_KEYS" ]; then
     echo -e "${RED}⚠ Nenhuma chave GPG encontrada${NC}"
@@ -64,7 +76,7 @@ cat > "$BACKUP_DIR/README-RESTORE.md" << 'EOF'
 # Copiar de volta
 mkdir -p ~/.ssh
 chmod 700 ~/.ssh
-cp ssh/* ~/.ssh/
+cp .ssh/* ~/.ssh/
 chmod 600 ~/.ssh/id_* ~/.ssh/id_*.pub
 ```
 
@@ -83,7 +95,7 @@ gpg --list-secret-keys
 
 ## Git
 ```bash
-cp gitconfig ~/.gitconfig
+cp .gitconfig ~/.gitconfig
 ```
 EOF
 

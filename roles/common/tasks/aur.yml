@@ -75,25 +75,21 @@
   set_fact:
     aur_essential:
       - wlogout
-      - swww
+      - awww
       - hyprpicker
       - asdf-vm
       - antigravity
-    aur_optional:
-      - nwg-look
-      - bibata-cursor-theme
-      - lazydocker
-      - btrfs-assistant
-      - limine-snapper-sync-git
-      - spotify
-      - spicetify-cli
-      - spicetify-themes-git
-      - waypaper
-      - imv
       - catppuccin-gtk-theme-mocha
       - catppuccin-cursors-mocha
       - catppuccin-sddm-theme-mocha
       - kvantum-theme-catppuccin-git
+    aur_optional:
+      - nwg-look
+      - bibata-cursor-theme
+      - btrfs-assistant
+      - limine-snapper-sync-git
+      - waypaper
+      - imv
   tags: [aur, packages]
 
 # Verifica quais pacotes existem no AUR
@@ -134,7 +130,9 @@
     yay -S --noconfirm --needed --answerdiff None --answerclean None {{ item.item }} 2>&1 || \
     (sleep 5 && yay -S --noconfirm --needed --answerdiff None --answerclean None {{ item.item }} 2>&1)
   loop: "{{ aur_check_optional.results }}"
-  when: item.stdout == "exists"
+  when:
+    - archdev_enable_full | bool
+    - item.stdout == "exists"
   become: false
   register: aur_optional_install
   failed_when: false

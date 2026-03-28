@@ -15,8 +15,10 @@ alias edit='nvim'
 alias lg='lazygit'
 alias ld='lazydocker'
 alias sys='btop'
+alias gpu='archdev-gpu-status'
 
 # Laravel
+alias lar='laravel'
 alias artisan='php artisan'
 alias serve='php artisan serve'
 alias migrate='php artisan migrate'

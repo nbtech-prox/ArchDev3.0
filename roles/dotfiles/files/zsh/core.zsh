@@ -2,6 +2,7 @@
 
 # PATH
 export PATH="$HOME/.config/composer/vendor/bin:$HOME/.local/bin:$PATH"
+export NVM_DIR="$HOME/.nvm"
 
 # Gemini API key
 [ -f ~/.gemini_key ] && source ~/.gemini_key

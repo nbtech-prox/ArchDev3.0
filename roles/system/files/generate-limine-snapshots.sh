@@ -2,55 +2,84 @@
 # ArchDev 3.0 - Generate Limine Snapshot Entries
 # Atualiza o menu do Limine com os snapshots mais recentes do Snapper
 
+set -euo pipefail
+
 CONFIG="/boot/limine/limine.conf"
-TEMP="/tmp/limine_snapshot_entries.conf"
+TEMP=$(mktemp /tmp/limine_snapshot_entries.XXXXXX)
 MAX_SNAPSHOTS=3
 
-# Detect base entries
-BASE_LINUX=$(awk '/\/Arch Linux \(linux\)/,/^$/' "$CONFIG" | head -4)
-BASE_LTS=$(awk '/\/Arch Linux \(linux-lts\)/,/^$/' "$CONFIG" | head -4)
+cleanup() {
+    rm -f "$TEMP"
+}
+trap cleanup EXIT INT TERM
 
-if [[ -z "$BASE_LINUX" ]]; then
-    echo "Linux base entry not found."
-    exit 1
-fi
-
-# Get latest snapshots (ignore snapshot 0)
-SNAPSHOTS=$(snapper list | awk 'NR>2 && $1 != "0" {print $1}' | sort -nr | head -n $MAX_SNAPSHOTS)
-
-if [[ -z "$SNAPSHOTS" ]]; then
-    echo "No snapshots found."
+if [[ ! -f "$CONFIG" ]]; then
+    echo "Limine config não encontrado: $CONFIG"
     exit 0
 fi
 
-echo "" > "$TEMP"
+if ! command -v snapper >/dev/null 2>&1; then
+    echo "Snapper não está disponível."
+    exit 0
+fi
+
+extract_entry() {
+    local pattern="$1"
+    awk -v pat="$pattern" '
+        $0 ~ pat {capture=1}
+        capture {print}
+        capture && NF==0 {exit}
+    ' "$CONFIG"
+}
+
+BASE_LINUX=$(extract_entry '^/Arch Linux \(linux\)$')
+BASE_LTS=$(extract_entry '^/Arch Linux \(linux-lts\)$')
+
+if [[ -z "$BASE_LINUX" ]]; then
+    echo "Entrada base do Linux não encontrada no Limine."
+    exit 0
+fi
+
+SNAPSHOTS=$(snapper list | awk 'NR>2 && $1 ~ /^[0-9]+$/ && $1 != "0" {print $1}' | sort -nr | head -n "$MAX_SNAPSHOTS" || true)
+
+if [[ -z "$SNAPSHOTS" ]]; then
+    echo "Sem snapshots para processar."
+    exit 0
+fi
+
+: > "$TEMP"
 
 for SNAP in $SNAPSHOTS; do
     SNAP_PATH="@/.snapshots/$SNAP/snapshot"
 
-    # Linux entry
-    NEW_LINUX=$(echo "$BASE_LINUX" | \
+    NEW_LINUX=$(printf '%s\n' "$BASE_LINUX" | \
         sed "s#/Arch Linux (linux)#/Arch Linux Snapshot $SNAP (linux)#g" | \
-        sed "s#rootflags=subvol=@ #rootflags=subvol=$SNAP_PATH #g")
+        sed -E "s#rootflags=subvol=[^ ]+#rootflags=subvol=$SNAP_PATH#g")
 
-    echo "$NEW_LINUX" >> "$TEMP"
-    echo "" >> "$TEMP"
+    printf '%s\n\n' "$NEW_LINUX" >> "$TEMP"
 
-    # LTS entry (if exists)
     if [[ -n "$BASE_LTS" ]]; then
-        NEW_LTS=$(echo "$BASE_LTS" | \
+        NEW_LTS=$(printf '%s\n' "$BASE_LTS" | \
             sed "s#/Arch Linux (linux-lts)#/Arch Linux Snapshot $SNAP (linux-lts)#g" | \
-            sed "s#rootflags=subvol=@ #rootflags=subvol=$SNAP_PATH #g")
+            sed -E "s#rootflags=subvol=[^ ]+#rootflags=subvol=$SNAP_PATH#g")
 
-        echo "$NEW_LTS" >> "$TEMP"
-        echo "" >> "$TEMP"
+        printf '%s\n\n' "$NEW_LTS" >> "$TEMP"
     fi
 done
 
-# Remove previous snapshot entries
-sed -i '/^\/Arch Linux Snapshot /,/^$/d' "$CONFIG"
+python - "$CONFIG" "$TEMP" <<'PY'
+from pathlib import Path
+import re
+import sys
 
-# Append new entries
-cat "$TEMP" >> "$CONFIG"
+config = Path(sys.argv[1])
+temp = Path(sys.argv[2])
+content = config.read_text()
+entries = temp.read_text().rstrip() + "\n"
+
+content = re.sub(r'(?ms)^/Arch Linux Snapshot .*?(?:\n\s*\n|\Z)', '', content)
+content = content.rstrip() + "\n\n" + entries
+config.write_text(content)
+PY
 
 echo "✅ Snapshots regenerated (latest $MAX_SNAPSHOTS): $SNAPSHOTS"

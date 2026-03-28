@@ -19,9 +19,9 @@ HELPERS DISPONÍVEIS
    Faz backup das chaves SSH e GPG
    Uso: archdev-backup-keys
 
-3. archdev-mariadb-setup
-   Configura o MariaDB com password segura
-   Uso: sudo archdev-mariadb-setup
+3. archdev-postgresql-setup
+   Configura o PostgreSQL com utilizador, base de dados e password segura
+   Uso: sudo archdev-postgresql-setup
 
 4. git-autosync
    Sincroniza repositórios git automaticamente

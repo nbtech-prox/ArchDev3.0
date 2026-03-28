@@ -1,0 +1,95 @@
+---
+- name: Ensure PostgreSQL packages are installed
+  pacman:
+    name:
+      - postgresql
+    state: present
+  become: yes
+  tags: [dev, postgresql]
+
+- name: Initialize PostgreSQL data directory
+  command: initdb -D /var/lib/postgres/data --locale=C.UTF-8 --encoding=UTF8
+  args:
+    creates: /var/lib/postgres/data/PG_VERSION
+  become: yes
+  become_user: postgres
+  tags: [dev, postgresql]
+
+- name: Configure PostgreSQL listen address
+  lineinfile:
+    path: /var/lib/postgres/data/postgresql.conf
+    regexp: '^#?listen_addresses\s*=.*'
+    line: "listen_addresses = 'localhost'"
+  notify: Restart PostgreSQL
+  tags: [dev, postgresql]
+
+- name: Configure PostgreSQL password encryption
+  lineinfile:
+    path: /var/lib/postgres/data/postgresql.conf
+    regexp: '^#?password_encryption\s*=.*'
+    line: "password_encryption = 'scram-sha-256'"
+  notify: Restart PostgreSQL
+  tags: [dev, postgresql]
+
+- name: Configure PostgreSQL for workstation development
+  lineinfile:
+    path: /var/lib/postgres/data/postgresql.conf
+    regexp: '^#?{{ item.key }}\s*=.*'
+    line: "{{ item.key }} = {{ item.value }}"
+  loop:
+    - { key: shared_buffers, value: "'8GB'" }
+    - { key: effective_cache_size, value: "'24GB'" }
+    - { key: work_mem, value: "'32MB'" }
+    - { key: maintenance_work_mem, value: "'1GB'" }
+    - { key: wal_buffers, value: "'32MB'" }
+    - { key: effective_io_concurrency, value: '256' }
+    - { key: random_page_cost, value: '1.1' }
+    - { key: default_statistics_target, value: '200' }
+    - { key: max_connections, value: '200' }
+  notify: Restart PostgreSQL
+  tags: [dev, postgresql]
+
+- name: Ensure PostgreSQL local auth rules are present
+  blockinfile:
+    path: /var/lib/postgres/data/pg_hba.conf
+    marker: '# {mark} ARCHDEV POSTGRESQL'
+    block: |
+      local   all             all                                     scram-sha-256
+      host    all             all             127.0.0.1/32            scram-sha-256
+      host    all             all             ::1/128                 scram-sha-256
+  notify: Restart PostgreSQL
+  tags: [dev, postgresql]
+
+- name: Start and enable PostgreSQL service
+  systemd:
+    name: postgresql
+    enabled: yes
+    state: started
+  tags: [dev, postgresql]
+
+- name: Ensure helpers directory exists for PostgreSQL helper
+  file:
+    path: "{{ target_home }}/.config/helpers"
+    state: directory
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+    mode: '0755'
+  tags: [dev, postgresql, helpers]
+
+- name: Install PostgreSQL setup helper
+  copy:
+    src: postgresql-setup.sh
+    dest: "{{ target_home }}/.config/helpers/postgresql-setup.sh"
+    mode: '0755'
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+  tags: [dev, postgresql, helpers]
+
+- name: Create symlink for PostgreSQL helper
+  file:
+    src: "{{ target_home }}/.config/helpers/postgresql-setup.sh"
+    dest: /usr/local/bin/archdev-postgresql-setup
+    state: link
+    force: yes
+  become: yes
+  tags: [dev, postgresql, helpers]

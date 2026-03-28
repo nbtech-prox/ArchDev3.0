@@ -1,0 +1,137 @@
+---
+- name: Install admin and security packages
+  pacman:
+    name: "{{ packages_admin }}"
+    state: present
+  tags: [system, security, base]
+
+- name: Enable UFW service
+  systemd:
+    name: ufw
+    enabled: yes
+    state: started
+  tags: [system, services]
+
+- name: Enable SSH service
+  systemd:
+    name: sshd
+    enabled: yes
+    state: started
+  tags: [system, services]
+
+- name: Enable NetworkManager service
+  systemd:
+    name: NetworkManager
+    enabled: yes
+    state: started
+  tags: [system, services]
+
+- name: Enable Bluetooth service
+  systemd:
+    name: bluetooth
+    enabled: yes
+    state: started
+  tags: [system, services]
+
+- name: Configure UFW Defaults
+  ufw:
+    state: enabled
+    policy: deny
+    direction: incoming
+  become: yes
+  tags: [system, firewall]
+
+- name: Allow Outgoing UFW
+  ufw:
+    state: enabled
+    policy: allow
+    direction: outgoing
+  become: yes
+  tags: [system, firewall]
+
+- name: Allow SSH
+  ufw:
+    rule: allow
+    port: '22'
+    proto: tcp
+  become: yes
+  tags: [system, firewall]
+
+- name: Allow Dev Ports
+  ufw:
+    rule: allow
+    port: "{{ item }}"
+    proto: tcp
+  loop:
+    - '8000'
+    - '8080'
+    - '5000'
+    - '8550'
+  become: yes
+  tags: [system, firewall]
+
+- name: Configure Fail2ban for SSH protection
+  copy:
+    src: fail2ban-ssh.conf
+    dest: /etc/fail2ban/jail.local
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart Fail2ban
+  tags: [security, fail2ban]
+
+- name: Enable and start Fail2ban
+  systemd:
+    name: fail2ban
+    enabled: yes
+    state: started
+  tags: [security, fail2ban]
+
+- name: Ensure security directory exists
+  file:
+    path: /etc/system-hardening
+    state: directory
+    mode: '0755'
+  become: true
+
+- name: Create security audit notice
+  copy:
+    content: |
+      ================================================
+      🛡️  SEGURANÇA DO SISTEMA - RESUMO
+      ================================================
+
+      Proteções Ativas:
+
+      1. Firewall (UFW)
+         - Bloqueia conexões de entrada
+         - Permite apenas SSH (porta 22)
+         - Portas dev abertas: 8000, 8080, 5000, 8550
+
+      2. Fail2ban
+         - Protege SSH contra brute force
+         - Bloqueia IP após 3 tentativas falhadas
+         - BAN dura 1 hora
+
+      3. Btrfs + Snapper
+         - Snapshots automáticos
+         - Rollback no boot (Limine)
+         - 3 snapshots mantidos
+
+      4. Password Manager (rbw)
+         - Passwords cifradas na cloud Bitwarden
+         - Integrado com rofi (Super+P)
+
+      Comandos Úteis:
+         sudo ufw status
+         sudo fail2ban-client status
+         sudo lynis audit system
+         archdev-backup-keys
+
+      ================================================
+    dest: /etc/system-hardening/security-notice.txt
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+    mode: '0644'
+  become: true
+  tags: [security]

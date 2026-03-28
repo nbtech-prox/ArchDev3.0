@@ -1,0 +1,31 @@
+---
+- name: Install web development stack
+  pacman:
+    name: "{{ packages_dev_web | reject('equalto', 'postgresql') | list }}"
+    state: present
+  become: yes
+  tags: [dev, web]
+
+- name: Include Laravel / PHP tasks
+  include_tasks: php_laravel.yml
+  tags: [dev, web]
+
+- name: Ensure Composer home directory exists
+  file:
+    path: "{{ target_home }}/.config/composer"
+    state: directory
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+    mode: '0755'
+  tags: [dev, tools, laravel]
+
+- name: Install Laravel installer globally with Composer
+  command: composer global require laravel/installer --no-interaction --prefer-dist
+  args:
+    creates: "{{ target_home }}/.config/composer/vendor/bin/laravel"
+  become: yes
+  become_user: "{{ target_user }}"
+  environment:
+    HOME: "{{ target_home }}"
+    COMPOSER_HOME: "{{ target_home }}/.config/composer"
+  tags: [dev, tools, laravel]

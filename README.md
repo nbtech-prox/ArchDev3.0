@@ -45,12 +45,12 @@ O **ArchDev v3.0** não é apenas uma atualização visual. É uma evolução na
 - **Saúde**: Wlsunset (filtro de luz azul) com toggle rápido
 
 ### Development Ready (Últimas Versões)
+- **OpenCode**: instalado automaticamente com `npm i -g opencode-ai` para uso imediato no terminal (`opencode`)
 - **Laravel / PHP (ASDF Versionado)**:
     - **PHP 8.x via ASDF**: Versionamento de PHP por projeto usando `bubble l`.
     - Todas as extensões ativas (bcmath, intl, gd, pdo, etc.).
-    - **MariaDB Otimizado**: Configuração "Muscle Car" para 64GB RAM + NVMe.
+    - **PostgreSQL**: configurado para desenvolvimento local, mais robusto para projectos modernos.
     - **Apache**: Configurado com `mpm_prefork` e suporte a vhosts.
-    - **phpMyAdmin**: Pré-configurado via Apache e Socket Unix.
 - **Python Ecosystem**: Poetry + Python (via ASDF) para gestão hermética (`bubble p`).
 - **Docker**: Configurado (rootless opcional) e `docker-compose`.
 - **Password Manager**: `rbw` (Bitwarden CLI) + `rofi-rbw` (Super+P) para gestão segura de passwords.
@@ -59,6 +59,10 @@ O **ArchDev v3.0** não é apenas uma atualização visual. É uma evolução na
 ---
 
 ## 🚀 Instalação
+
+> Nota: o repositório está a preparar a transição para a arquitectura `ArchDev 4.0`.
+> Já existem os primeiros blocos de documentação e o wrapper `scripts/archdev`,
+> mas o fluxo principal estável continua a ser o `setup.sh`.
 
 ### 1. Pré-requisitos (Arch Linux Limpo)
 Recomendamos instalar o Arch Linux usando o **`archinstall`** com estas opções críticas para garantir a resiliência do sistema:
@@ -77,8 +81,81 @@ cd ArchDev3.0
 
 # 2. Execute o Setup Mágico
 chmod +x setup.sh
-./setup.sh
+./setup.sh full
 ```
+
+### Preview da arquitectura 4.0
+
+Já podes explorar os novos ficheiros-base da futura 4.0:
+
+```bash
+scripts/archdev --help
+cat docs/architecture-4.0.md
+cat docs/profiles-4.0.md
+cat docs/migration-4.0.md
+cat docs/doctor-4.0.md
+```
+
+Também já existe um fluxo declarativo inicial:
+
+```bash
+scripts/archdev init
+scripts/archdev apply full
+scripts/archdev status
+scripts/archdev doctor
+scripts/archdev rollback list
+```
+
+> O `setup.sh` continua a ser o caminho estável da 3.x. O `scripts/archdev apply` já usa a nova entrada declarativa `playbooks/site-4.yml`.
+> No fluxo 4.0, o `apply` já cria snapshots pre/post quando o `snapper` está disponível e corre `doctor` automaticamente no fim.
+> Antes do `apply`, o wrapper deteta o hardware da máquina, mostra um resumo assistido e grava `inventories/host_vars/<hostname>.yml` com defaults seguros.
+> O fluxo 4.0 já foi validado em VM Arch Linux limpa com os perfis `minimal` e `full`, incluindo sessão `Hyprland`, `SDDM`, `doctor`, Docker, PostgreSQL e OpenCode.
+
+Perfis disponíveis:
+
+```bash
+./setup.sh minimal
+./setup.sh dev
+./setup.sh full
+```
+
+- `minimal`: ambiente gráfico, terminal, browser e dotfiles essenciais
+- `dev`: workstation de desenvolvimento com Docker, Laravel/PHP, Python, PostgreSQL e OpenCode
+- `full`: tudo o que existe no perfil `dev` mais ferramentas adicionais de trabalho, full-stack e produtividade
+
+### O que instala cada perfil
+
+#### `minimal`
+- Hyprland, Waybar, Rofi, Kitty, ZSH, Starship
+- Firefox, Thunar, clipboard, screenshots, notificações, áudio, Bluetooth
+- Neovim e dotfiles base
+- Btrfs, Snapper, UFW, Fail2ban, Lynis
+
+#### `dev`
+- Tudo do `minimal`
+- Docker e Docker Compose
+- PHP + Composer + extensões para Laravel
+- Laravel Installer global via Composer
+- Python + Poetry
+- PostgreSQL
+- Node.js + npm + nvm
+- OpenCode via `npm i -g opencode-ai`
+- Helpers de Bitwarden, PostgreSQL e backup de chaves
+
+#### `full`
+- Tudo do `dev`
+- Bun, pnpm e yarn
+- GitHub CLI e git-delta
+- HTTPie e yq
+- Terraform
+- lazydocker
+- Redis
+- Chromium
+- tmux e just
+- shellcheck, yamllint e ansible-lint
+- pgcli e DBeaver
+
+> 💡 `kubectl` e `helm` ficam de fora do `full` e podem entrar mais tarde num perfil específico de DevOps.
 
 > ⚠️ **Aviso:** O script irá pedir a tua password de administrador (sudo) no início da execução (`-K`) para elevar privilégios e instalar todos os pacotes necessários.
 
@@ -101,14 +178,12 @@ chmod +x setup.sh
 > ```
 > O reboot é necessário para o Docker ativar e o Hyprland iniciar corretamente.
 
-### 1. MariaDB (Segurança)
-Após o reboot, configura o MariaDB automaticamente:
+### 1. PostgreSQL (Configuração inicial)
+Após o reboot, configura o PostgreSQL automaticamente:
 ```bash
-sudo archdev-mariadb-setup
+sudo archdev-postgresql-setup
 ```
-Este script configura tudo automaticamente e gera uma password segura para root.
-
-> 💡 Alternativa manual: `sudo mariadb-secure-installation`
+Este script cria o utilizador, a base de dados e uma password segura para desenvolvimento local.
 
 ### 2. Docker
 O teu utilizador já está no grupo `docker`. Após o **reboot**, testa:
@@ -116,10 +191,34 @@ O teu utilizador já está no grupo `docker`. Após o **reboot**, testa:
 docker run hello-world
 ```
 
-### 3. Spotify
-O Spotify e o tema Catppuccin já estão instalados. Basta abrir o Spotify uma vez para ativar.
+### 2.1. OpenCode
+O OpenCode fica instalado automaticamente via `npm i -g opencode-ai`. Depois da instalação podes testar com:
+```bash
+opencode
+```
 
-### 4. Password Manager (Bitwarden via rbw)
+Num projeto novo, o fluxo recomendado é:
+```bash
+cd /caminho/do/projeto
+opencode
+# dentro do OpenCode
+/init
+```
+
+### 2.2. Laravel
+O instalador do Laravel fica disponível automaticamente no perfil `dev` e `full`:
+
+```bash
+laravel new meu-projecto
+```
+
+Também fica disponível o alias curto:
+
+```bash
+lar new meu-projecto
+```
+
+### 3. Password Manager (Bitwarden via rbw)
 O `rbw` é um cliente CLI não-oficial do Bitwarden. Configura com:
 
 ```bash
@@ -136,14 +235,14 @@ Depois de configurado:
 - `rbw get github.com` → Obter password (CLI)
 - `rbw generate` → Gerar password aleatória
 
-### 5. Backup de Chaves de Segurança (Importante!)
+### 4. Backup de Chaves de Segurança (Importante!)
 Faça backup das tuas chaves SSH e GPG:
 ```bash
 archdev-backup-keys
 ```
 Guarda o backup num local seguro (USB, cloud cifrada).
 
-### 6. Apagar a Pasta de Instalação (Opcional)
+### 5. Apagar a Pasta de Instalação (Opcional)
 Após a instalação completa, a pasta `ArchDev3.0/` pode ser removida:
 ```bash
 cd ..
@@ -151,7 +250,7 @@ rm -rf ArchDev3.0/
 ```
 O sistema fica totalmente independente.
 
-### 7. Limpeza do Sistema
+### 6. Limpeza do Sistema
 Mantenha o sistema leve libertando espaço em disco:
 *   `paccache -r`: Mantém apenas as 3 últimas versões de pacotes pacman/AUR.
 *   `docker system prune -a`: Remove containers, volumes e imagens Docker não em uso.
@@ -341,7 +440,7 @@ Scripts instalados automaticamente:
 | Comando | Descrição |
 | :--- | :--- |
 | `archdev-bitwarden-setup` | Configura Bitwarden (rbw) |
-| `archdev-mariadb-setup` | Configura MariaDB com password segura |
+| `archdev-postgresql-setup` | Configura PostgreSQL com utilizador, base de dados e password segura |
 | `archdev-backup-keys` | Backup de chaves SSH + GPG |
 
 ---
@@ -407,21 +506,54 @@ keyboard_layout: "us"  # ou "br", "es", "fr", etc.
 
 ### Deteção Automática de GPU
 
-O Hyprland detecta automaticamente a tua GPU e aplica otimizações:
+O Hyprland fica afinado para usar a tua GPU dedicada primeiro e aplicar otimizações AMD:
 
 | GPU | Otimizações Aplicadas |
 |-----|----------------------|
-| AMD | `LIBVA_DRIVER_NAME=radeonsi`, `VDPAU_DRIVER=radeonsi` |
+| AMD dedicada | `WLR_DRM_DEVICES` com prioridade para a RX 6700 XT, `AQ_DRM_DEVICES`, `DRI_PRIME=1`, `LIBVA_DRIVER_NAME=radeonsi` |
 | Intel | `LIBVA_DRIVER_NAME=i965` |
 | NVIDIA | `LIBVA_DRIVER_NAME=nvidia`, `GBM_BACKEND=nvidia-drm` |
 | Genérica | Defaults seguros |
+
+### Otimizações aplicadas ao teu hardware
+
+Configuração pensada para:
+
+- CPU: AMD Ryzen 7 9700X
+- GPU principal: AMD Radeon RX 6700 XT
+- GPU secundária: AMD integrada
+- RAM: 64 GiB
+- Sistema em NVMe Btrfs
+
+O perfil atual aplica:
+
+- prioridade à GPU dedicada no ambiente gráfico
+- variáveis de sessão globais em `/etc/environment.d/90-archdev-gpu.conf`
+- `zram` com `zstd`
+- `sysctl` afinado para workstation de desenvolvimento
+- Docker com BuildKit, `overlay2`, logs locais e `live-restore`
+- PostgreSQL afinado para NVMe + 64 GiB de RAM
+
+Para confirmar rapidamente a GPU prioritária após entrares na sessão:
+
+```bash
+gpu
+```
+
+ou:
+
+```bash
+archdev-gpu-status
+```
+
+> Nota: por pedido teu, o setup não altera nada em `/mnt/projetos`.
 
 ### Pacotes AUR
 
 Os pacotes AUR estão divididos em:
 
-- **Essenciais**: wlogout, swww, hyprpicker, asdf-vm, antigravity
-- **Opcionais**: spotify, lazydocker, temas Catppuccin, etc.
+- **Essenciais**: wlogout, awww, hyprpicker, asdf-vm, antigravity
+- **Opcionais**: temas Catppuccin, waypaper, imv, btrfs-assistant, etc.
 
 Se um pacote AUR falhar, o playbook continua (não interrompe a instalação).
 

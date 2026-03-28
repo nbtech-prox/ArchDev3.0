@@ -5,7 +5,7 @@
 
 - name: Install Developer Tools
   pacman:
-    name: "{{ packages_dev_tools }}"
+    name: "{{ packages_dev_tools + (packages_dev_tools_full if archdev_enable_full | bool else []) }}"
     state: present
   become: yes
   tags: [dev, tools]
@@ -23,6 +23,39 @@
     state: present
   become: yes
   tags: [dev, python]
+
+- name: Check if OpenCode is already installed globally
+  command: npm list -g --depth=0 opencode-ai
+  register: opencode_installed
+  changed_when: false
+  failed_when: false
+  tags: [dev, tools, opencode]
+
+- name: Install OpenCode globally with npm
+  command: npm i -g opencode-ai
+  become: yes
+  when: opencode_installed.rc != 0
+  tags: [dev, tools, opencode]
+
+- name: Ensure Composer home directory exists
+  file:
+    path: "{{ target_home }}/.config/composer"
+    state: directory
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+    mode: '0755'
+  tags: [dev, tools, laravel]
+
+- name: Install Laravel installer globally with Composer
+  command: composer global require laravel/installer --no-interaction --prefer-dist
+  args:
+    creates: "{{ target_home }}/.config/composer/vendor/bin/laravel"
+  become: yes
+  become_user: "{{ target_user }}"
+  environment:
+    HOME: "{{ target_home }}"
+    COMPOSER_HOME: "{{ target_home }}/.config/composer"
+  tags: [dev, tools, laravel]
 
 # --------------------------------------------------------
 # Docker Setup
@@ -62,6 +95,15 @@
 
 - include_tasks: git_autosync.yml
   tags: [dev, git-autosync]
+
+- name: Enable Redis service for full workstation profile
+  systemd:
+    name: redis
+    enabled: yes
+    state: started
+  become: yes
+  when: archdev_enable_full | bool
+  tags: [dev, redis]
 
 
 # --------------------------------------------------------
@@ -159,27 +201,45 @@
   become: yes
   tags: [dev, security, helpers]
 
-# --------------------------------------------------------
-# MariaDB Setup (service enable/start está em php_laravel.yml)
-# --------------------------------------------------------
-
-- name: Install MariaDB setup helper
+- name: Install GPU status helper script
   copy:
-    src: mariadb-setup.sh
-    dest: "{{ target_home }}/.config/helpers/mariadb-setup.sh"
+    src: gpu-status.sh
+    dest: "{{ target_home }}/.config/helpers/gpu-status.sh"
     mode: '0755'
     owner: "{{ target_user }}"
     group: "{{ target_user }}"
-  tags: [dev, mariadb, helpers]
+  tags: [dev, gpu, helpers]
 
-- name: Create symlink for mariadb helper
+- name: Create symlink for GPU status helper
   file:
-    src: "{{ target_home }}/.config/helpers/mariadb-setup.sh"
-    dest: /usr/local/bin/archdev-mariadb-setup
+    src: "{{ target_home }}/.config/helpers/gpu-status.sh"
+    dest: /usr/local/bin/archdev-gpu-status
     state: link
     force: yes
   become: yes
-  tags: [dev, mariadb, helpers]
+  tags: [dev, gpu, helpers]
+
+# --------------------------------------------------------
+# PostgreSQL Setup (service enable/start está em php_laravel.yml)
+# --------------------------------------------------------
+
+- name: Install PostgreSQL setup helper
+  copy:
+    src: postgresql-setup.sh
+    dest: "{{ target_home }}/.config/helpers/postgresql-setup.sh"
+    mode: '0755'
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+  tags: [dev, postgresql, helpers]
+
+- name: Create symlink for PostgreSQL helper
+  file:
+    src: "{{ target_home }}/.config/helpers/postgresql-setup.sh"
+    dest: /usr/local/bin/archdev-postgresql-setup
+    state: link
+    force: yes
+  become: yes
+  tags: [dev, postgresql, helpers]
 
 # --------------------------------------------------------
 # Post-Install Summary (notificação consolidada)
@@ -200,10 +260,10 @@
       ║     Configura rbw + rofi-rbw com a sua conta.        ║
       ║     Depois use Super+P para aceder passwords.        ║
       ║                                                      ║
-      ║  2. 🗄️  MariaDB (Base de Dados)                      ║
-      ║     $ sudo archdev-mariadb-setup                     ║
-      ║     Securiza MariaDB: password root, remove test DB. ║
-      ║     Necessário antes de usar phpMyAdmin.             ║
+      ║  2. 🗄️  PostgreSQL (Base de Dados)                   ║
+      ║     $ sudo archdev-postgresql-setup                  ║
+      ║     Cria utilizador, password e base de dados local. ║
+      ║     Ideal para Laravel, Python e projectos fullstack.║
       ║                                                      ║
       ║  3. 🔑 Backup de Chaves                              ║
       ║     $ archdev-backup-keys                            ║
@@ -233,8 +293,8 @@
        1. 🔐 archdev-bitwarden-setup
           → Configura Bitwarden (password manager)
 
-       2. 🗄️  sudo archdev-mariadb-setup
-          → Securiza MariaDB (gera password root)
+       2. 🗄️  sudo archdev-postgresql-setup
+          → Configura PostgreSQL para desenvolvimento local
 
        3. 🔑 archdev-backup-keys
           → Backup das chaves SSH + GPG

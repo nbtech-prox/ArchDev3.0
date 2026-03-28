@@ -37,19 +37,28 @@
   loop:
     - bcmath
     - intl
-    - pdo_mysql
+    - pdo_pgsql
+    - pgsql
     - sqlite3
     - curl
     - iconv
     - zip
-    - mysqli
-    - openssl
     - gd
     - bz2
     - exif
-    - fileinfo
     - ftp
     - gettext
+  notify: Restart PHP-FPM
+  tags: [dev, php, extensions]
+
+- name: Remove invalid built-in PHP extension directives
+  lineinfile:
+    path: /etc/php/php.ini
+    regexp: '^extension={{ item }}$'
+    state: absent
+  loop:
+    - openssl
+    - fileinfo
     - mbstring
   notify: Restart PHP-FPM
   tags: [dev, php, extensions]
@@ -110,69 +119,67 @@
     mode: '0755'
   tags: [dev, php, composer]
 
-- name: Initialize MariaDB data directory (required on fresh install)
-  command: mariadb-install-db --user=mysql --basedir=/usr --datadir=/var/lib/mysql
+- name: Initialize PostgreSQL data directory
+  command: initdb -D /var/lib/postgres/data --locale=C.UTF-8 --encoding=UTF8
   args:
-    creates: /var/lib/mysql/mysql  # Só corre se ainda não foi inicializado
+    creates: /var/lib/postgres/data/PG_VERSION
   become: yes
-  tags: [dev, mariadb]
+  become_user: postgres
+  tags: [dev, postgresql]
 
-- name: Start and enable MariaDB service
+- name: Configure PostgreSQL listen address
+  lineinfile:
+    path: /var/lib/postgres/data/postgresql.conf
+    regexp: '^#?listen_addresses\s*=.*'
+    line: "listen_addresses = 'localhost'"
+  notify: Restart PostgreSQL
+  tags: [dev, postgresql]
+
+- name: Configure PostgreSQL password encryption
+  lineinfile:
+    path: /var/lib/postgres/data/postgresql.conf
+    regexp: '^#?password_encryption\s*=.*'
+    line: "password_encryption = 'scram-sha-256'"
+  notify: Restart PostgreSQL
+  tags: [dev, postgresql]
+
+- name: Configure PostgreSQL for workstation development
+  lineinfile:
+    path: /var/lib/postgres/data/postgresql.conf
+    regexp: '^#?{{ item.key }}\s*=.*'
+    line: "{{ item.key }} = {{ item.value }}"
+  loop:
+    - { key: shared_buffers, value: "'8GB'" }
+    - { key: effective_cache_size, value: "'24GB'" }
+    - { key: work_mem, value: "'32MB'" }
+    - { key: maintenance_work_mem, value: "'1GB'" }
+    - { key: wal_buffers, value: "'32MB'" }
+    - { key: effective_io_concurrency, value: '256' }
+    - { key: random_page_cost, value: '1.1' }
+    - { key: default_statistics_target, value: '200' }
+    - { key: max_connections, value: '200' }
+  notify: Restart PostgreSQL
+  tags: [dev, postgresql]
+
+- name: Ensure PostgreSQL local auth rules are present
+  blockinfile:
+    path: /var/lib/postgres/data/pg_hba.conf
+    marker: "# {mark} ARCHDEV POSTGRESQL"
+    block: |
+      local   all             all                                     scram-sha-256
+      host    all             all             127.0.0.1/32            scram-sha-256
+      host    all             all             ::1/128                 scram-sha-256
+  notify: Restart PostgreSQL
+  tags: [dev, postgresql]
+
+- name: Start and enable PostgreSQL service
   systemd:
-    name: mariadb
+    name: postgresql
     enabled: yes
     state: started
-  tags: [dev, mariadb]
+  tags: [dev, postgresql]
 
-- name: Apply MariaDB Custom Optimization
-  copy:
-    src: mariadb_custom.cnf
-    dest: /etc/my.cnf.d/z-custom-archdev.cnf
-    owner: root
-    group: root
-    mode: '0644'
-  notify: Restart MariaDB
-  tags: [dev, mariadb]
-
-# --- Apache & phpMyAdmin ---
-- name: Install Apache phpMyAdmin Config
-  copy:
-    src: apache_phpmyadmin.conf
-    dest: /etc/httpd/conf/extra/phpmyadmin.conf
-    owner: root
-    group: root
-    mode: '0644'
-  tags: [dev, apache, phpmyadmin]
-
-- name: Install phpMyAdmin Config
-  copy:
-    src: phpmyadmin_config.inc.php
-    dest: /etc/webapps/phpmyadmin/config.inc.php
-    owner: root
-    group: http
-    mode: '0640'
-  tags: [dev, phpmyadmin]
-
-- name: Generate Random Blowfish Secret for phpMyAdmin
-  shell: openssl rand -base64 32 | tr -d /=+ | cut -c -32
-  register: blowfish_secret
-  changed_when: false
-  tags: [dev, phpmyadmin]
-
-- name: Set Blowfish Secret
-  replace:
-    path: /etc/webapps/phpmyadmin/config.inc.php
-    regexp: 'ARCHDEV_REPLACE_ME_WITH_RANDOM_STRING_32CH'
-    replace: "{{ blowfish_secret.stdout }}"
-  tags: [dev, phpmyadmin]
-
-- name: Include phpMyAdmin in Apache Config
-  lineinfile:
-    path: /etc/httpd/conf/httpd.conf
-    line: "Include conf/extra/phpmyadmin.conf"
-    state: present
-  notify: Restart Apache
-  tags: [dev, apache, phpmyadmin]
+# --- Apache ---
 
 - name: Enable MPM Prefork (Required for mod_php)
   replace:

@@ -1,0 +1,13 @@
+[Unit]
+Description=ArchDev Git Auto-Sync
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/local/bin/git-autosync "{{ projects_dir | default('/mnt/projetos') }}"
+Restart=always
+User={{ target_user }}
+Environment=PATH=/usr/bin:/usr/local/bin
+
+[Install]
+WantedBy=multi-user.target

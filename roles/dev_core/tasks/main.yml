@@ -1,0 +1,149 @@
+---
+- name: Install developer tools base
+  pacman:
+    name: "{{ packages_dev_tools + (packages_dev_tools_full if feature_full | default(false) | bool else []) }}"
+    state: present
+  become: yes
+  tags: [dev, tools]
+
+- name: Install Python stack base
+  pacman:
+    name: "{{ packages_dev_python }}"
+    state: present
+  become: yes
+  tags: [dev, python]
+
+- name: Ensure helpers directory exists
+  file:
+    path: "{{ target_home }}/.config/helpers"
+    state: directory
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+    mode: '0755'
+  tags: [dev, helpers]
+
+- name: Install helpers README
+  copy:
+    src: helpers-readme.txt
+    dest: "{{ target_home }}/.config/helpers/README.txt"
+    mode: '0644'
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+  tags: [dev, helpers]
+
+- name: Install Bitwarden setup helper
+  copy:
+    src: bitwarden-setup.sh
+    dest: "{{ target_home }}/.config/helpers/bitwarden-setup.sh"
+    mode: '0755'
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+  tags: [dev, bitwarden, helpers]
+
+- name: Create symlink for bitwarden helper
+  file:
+    src: "{{ target_home }}/.config/helpers/bitwarden-setup.sh"
+    dest: /usr/local/bin/archdev-bitwarden-setup
+    state: link
+    force: yes
+  become: yes
+  tags: [dev, bitwarden, helpers]
+
+- name: Create Bitwarden notice
+  copy:
+    content: |
+      ================================================
+      🔐 BITWARDEN PASSWORD MANAGER
+      ================================================
+
+      O rbw e rofi-rbw estão instalados.
+
+      Para configurar:
+         archdev-bitwarden-setup
+
+      Ou diretamente:
+         ~/.config/helpers/bitwarden-setup.sh
+
+      Comandos úteis:
+         rbw login
+         rbw sync
+         rofi-rbw
+
+      Atalho: Super+P → Abrir seletor de passwords
+      ================================================
+    dest: "{{ target_home }}/.config/helpers/bitwarden-notice.txt"
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+    mode: '0644'
+  tags: [dev, bitwarden, helpers]
+
+- name: Install backup keys helper script
+  copy:
+    src: backup-keys.sh
+    dest: "{{ target_home }}/.config/helpers/backup-keys.sh"
+    mode: '0755'
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+  tags: [dev, security, helpers]
+
+- name: Create symlink for backup-keys helper
+  file:
+    src: "{{ target_home }}/.config/helpers/backup-keys.sh"
+    dest: /usr/local/bin/archdev-backup-keys
+    state: link
+    force: yes
+  become: yes
+  tags: [dev, security, helpers]
+
+- name: Install GPU status helper script
+  copy:
+    src: gpu-status.sh
+    dest: "{{ target_home }}/.config/helpers/gpu-status.sh"
+    mode: '0755'
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+  tags: [dev, gpu, helpers]
+
+- name: Create symlink for GPU status helper
+  file:
+    src: "{{ target_home }}/.config/helpers/gpu-status.sh"
+    dest: /usr/local/bin/archdev-gpu-status
+    state: link
+    force: yes
+  become: yes
+  tags: [dev, gpu, helpers]
+
+- name: Include Python environment tasks
+  include_tasks: python.yml
+  tags: [dev, python]
+
+- name: Include Git autosync tasks
+  include_tasks: git_autosync.yml
+  tags: [dev, git-autosync]
+
+- name: Enable Redis service for full workstation profile
+  systemd:
+    name: redis
+    enabled: yes
+    state: started
+  become: yes
+  when: feature_redis | default(false) | bool
+  tags: [dev, redis]
+
+- name: Create consolidated post-install helpers guide
+  copy:
+    content: |
+      ╔══════════════════════════════════════════════════════╗
+      ║          🚀 ArchDev 4.0 — Pós-Instalação           ║
+      ╠══════════════════════════════════════════════════════╣
+      ║  1. 🔐 archdev-bitwarden-setup                      ║
+      ║  2. 🗄️  sudo archdev-postgresql-setup               ║
+      ║  3. 🔑 archdev-backup-keys                          ║
+      ║  4. 🎮 archdev-gpu-status                           ║
+      ║  📁 Scripts em: ~/.config/helpers/                  ║
+      ╚══════════════════════════════════════════════════════╝
+    dest: "{{ target_home }}/.config/helpers/POST-INSTALL.txt"
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+    mode: '0644'
+  tags: [dev, helpers]

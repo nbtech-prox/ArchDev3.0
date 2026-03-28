@@ -1,0 +1,6 @@
+---
+archdev_feature_desktop_packages:
+  - hyprland
+  - waybar
+  - kitty
+  - rofi

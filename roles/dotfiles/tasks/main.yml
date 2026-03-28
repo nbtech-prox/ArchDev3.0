@@ -112,9 +112,17 @@
     - rofi
     - wlogout
     - nvim
-    - starship
     - zathura
   tags: [dotfiles, config]
+
+- name: Deploy Starship config to root of .config
+  copy:
+    src: starship/starship.toml
+    dest: "{{ target_home }}/.config/starship.toml"
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+    mode: '0644'
+  tags: [dotfiles, config, shell]
 
 - name: Ensure Waybar scripts are executable
   file:

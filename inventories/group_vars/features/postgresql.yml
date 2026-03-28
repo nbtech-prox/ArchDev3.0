@@ -1,0 +1,4 @@
+---
+archdev_feature_postgresql_packages:
+  - postgresql
+  - pgcli

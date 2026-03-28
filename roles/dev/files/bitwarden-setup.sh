@@ -16,8 +16,9 @@ echo ""
 # Verifica se rbw está instalado
 if ! command -v rbw &> /dev/null; then
     echo -e "${YELLOW}⚠️  rbw não está instalado.${NC}"
-    echo "   Instalando via AUR..."
-    yay -S rbw rofi-rbw --noconfirm
+    echo "   O helper assume que o ArchDev já instalou rbw e rofi-rbw."
+    echo "   Volte a correr o setup com perfil dev ou full."
+    exit 1
 fi
 
 echo -e "${GREEN}✅ rbw instalado${NC}"

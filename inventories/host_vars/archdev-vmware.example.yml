@@ -1,0 +1,11 @@
+---
+# Exemplo de host_vars para VM VMware / hardware genérico
+
+archdev_hardware_type: "vmware"
+archdev_cpu_vendor: "intel"
+archdev_graphics_mode: "vmware"
+archdev_enable_gpu_overrides: false
+archdev_enable_zram: false
+archdev_enable_wlsunset: false
+archdev_sddm_theme: "catppuccin-auto"
+archdev_target_ram_mb: 4096

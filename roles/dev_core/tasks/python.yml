@@ -1,0 +1,10 @@
+---
+- name: Install ASDF Python and Poetry plugins
+  shell: |
+    . /opt/asdf-vm/asdf.sh
+    asdf plugin add python https://github.com/asdf-community/asdf-python.git || true
+    asdf plugin add poetry https://github.com/asdf-community/asdf-poetry.git || true
+  args:
+    executable: /bin/bash
+  ignore_errors: yes
+  tags: [dev, python, asdf]

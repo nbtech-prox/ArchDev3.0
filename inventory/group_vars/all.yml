@@ -9,6 +9,7 @@ packages_hyprland:
   - hyprland
   - xdg-desktop-portal-hyprland
   - xdg-desktop-portal-gtk
+  - networkmanager
   - polkit-kde-agent
   - qt5-wayland
   - qt6-wayland
@@ -26,9 +27,12 @@ packages_hyprland:
   - wl-clipboard  # Fornece wl-copy/wl-paste (clipboard)
   - cliphist
   - playerctl
+  - bluez
+  - bluez-utils
   - blueman
   - pavucontrol
   - network-manager-applet
+  - nm-connection-editor
   - wlsunset  # Filtro de luz azul
   - zathura
   - zathura-pdf-mupdf
@@ -59,33 +63,55 @@ packages_terminal:
   - zoxide
   - btop
   - fastfetch
+  - neovim
   - tree-sitter-cli
   - jq          # JSON parser (requerido pelos scripts Waybar)
 
 packages_dev_tools:
-  - neovim
   - lazygit
   - make
   - docker
   - docker-compose
   - direnv
 
+packages_dev_tools_full:
+  - bun
+  - pnpm
+  - yarn
+  - github-cli
+  - git-delta
+  - httpie
+  - yq
+  - terraform
+  - lazydocker
+  - redis
+  - chromium
+  - tmux
+  - just
+  - shellcheck
+  - yamllint
+  - ansible-lint
+  - pgcli
+  - dbeaver
+
 packages_dev_web:
   - php
   - php-fpm
   - php-gd
   - php-intl
+  - php-pgsql
   - php-redis
+  - php-sqlite
   - php-imagick
   - icu
   - composer
   - nodejs
+  - nvm
   - npm
   - sqlite
-  - mariadb
+  - postgresql
   - apache
   - php-apache
-  - phpmyadmin
 
 packages_dev_python:
   - python
@@ -97,8 +123,10 @@ packages_system:
   - which
   - curl
   - wget
+  - git
   - base-devel
   - fakeroot
+  - pciutils
   - thunar
   - tumbler
   - ffmpegthumbnailer
@@ -132,6 +160,8 @@ packages_system:
   - rofi-rbw
   - rbw
   - firefox
+
+packages_system_full:
   - mpv
   - inkscape
   # Kernel Headers
@@ -152,8 +182,23 @@ projects_dir: "/mnt/projetos"
 # --- Configuração do Sistema ---
 keyboard_layout: "pt"
 
+# --- GPU Principal ---
+# Defaults seguros. Para a 4.0, sobrepor por máquina em inventories/host_vars/<hostname>.yml
+archdev_hardware_type: "baremetal"
+archdev_cpu_vendor: "generic"
+archdev_graphics_mode: "generic"
+archdev_enable_gpu_overrides: false
+archdev_enable_wlsunset: true
+archdev_sddm_theme: "catppuccin-auto"
+primary_gpu_drm_path: ""
+secondary_gpu_drm_path: ""
+
+# --- Hardware alvo ---
+# Defaults globais. Afinar por máquina em inventories/host_vars/<hostname>.yml
+archdev_target_ram_mb: 65536
+archdev_enable_zram: true
+
 # --- Night Mode (wlsunset) ---
-# Coordenadas para o filtro de luz azul adaptativo
-# Use: https://www.latlong.net/ para encontrar as suas coordenadas
+# Defaults globais. Afinar por máquina em inventories/host_vars/<hostname>.yml
 wlsunset_latitude: "38.7"
 wlsunset_longitude: "-9.1"

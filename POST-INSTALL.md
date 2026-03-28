@@ -14,16 +14,29 @@ archdev-bitwarden-setup
 # Siga as instruções para configurar seu email e fazer login
 ```
 
-## 3. Configurar MariaDB (se usar)
+## 3. Configurar PostgreSQL (se usar)
 ```bash
-sudo archdev-mariadb-setup
-# Ou: sudo ~/.config/helpers/mariadb-setup.sh
-# Gera password segura automaticamente
+sudo archdev-postgresql-setup
+# Ou: sudo ~/.config/helpers/postgresql-setup.sh
+# Cria utilizador, base de dados e password automaticamente
+```
+
+## 3.1. Testar OpenCode
+O OpenCode é instalado automaticamente durante o setup com npm global:
+
+```bash
+opencode
+```
+
+Dentro de um projeto, corre depois:
+
+```text
+/init
 ```
 
 ### Helpers disponíveis em ~/.config/helpers/
 - `archdev-bitwarden-setup` - Configurar Bitwarden
-- `archdev-mariadb-setup` - Configurar MariaDB
+- `archdev-postgresql-setup` - Configurar PostgreSQL
 - `archdev-backup-keys` - Backup de chaves SSH + GPG
 - `git-autosync` - Sincronização automática de repos
 

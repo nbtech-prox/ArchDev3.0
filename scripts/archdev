@@ -1,0 +1,827 @@
+#!/bin/bash
+
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PROFILE="${ARCHDEV_PROFILE:-full}"
+PASS_FILE=""
+STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/archdev"
+LAST_APPLY_FILE="$STATE_DIR/last-apply.env"
+HOST_VARS_DIR="$ROOT_DIR/inventories/host_vars"
+HOST_NAME="$( (command -v hostname >/dev/null 2>&1 && hostname -s) || uname -n )"
+HOST_VARS_FILE="$HOST_VARS_DIR/${HOST_NAME}.yml"
+
+usage() {
+  cat <<'EOF'
+ArchDev command wrapper
+
+Uso:
+  scripts/archdev init
+  scripts/archdev apply [minimal|dev|full]
+  scripts/archdev status
+  scripts/archdev doctor
+  scripts/archdev rollback list
+  scripts/archdev rollback <snapshot_id>
+
+Comandos:
+  init     Instala dependências mínimas (git e ansible)
+  apply    Deteta hardware, confirma host_vars e aplica um perfil
+  status   Mostra informação básica do ambiente actual
+  doctor   Corre verificações pós-instalação
+  rollback Lista snapshots ou faz rollback para um snapshot
+EOF
+}
+
+section() {
+  echo ""
+  echo "$1"
+  echo "$(printf '%*s' ${#1} '' | tr ' ' '=')"
+}
+
+need_root() {
+  if [[ ${EUID:-$(id -u)} -ne 0 ]]; then
+    sudo "$@"
+  else
+    "$@"
+  fi
+}
+
+cleanup() {
+  if [[ -n "$PASS_FILE" && -f "$PASS_FILE" ]]; then
+    rm -f "$PASS_FILE"
+  fi
+}
+
+ensure_state_dir() {
+  mkdir -p "$STATE_DIR"
+}
+
+ensure_host_vars_dir() {
+  mkdir -p "$HOST_VARS_DIR"
+}
+
+read_host_var() {
+  local key="$1"
+  local file="$2"
+  local line=""
+  local value=""
+
+  [[ -f "$file" ]] || return 1
+
+  line="$(grep -E "^${key}:" "$file" 2>/dev/null | tail -n1 || true)"
+  [[ -n "$line" ]] || return 1
+
+  value="${line#*:}"
+  value="${value# }"
+  value="${value%\"}"
+  value="${value#\"}"
+  echo "$value"
+}
+
+load_runtime_context() {
+  ARCHDEV_DOCTOR_PROFILE="${ARCHDEV_PROFILE:-$PROFILE}"
+  ARCHDEV_DOCTOR_HARDWARE_TYPE="baremetal"
+  ARCHDEV_DOCTOR_GRAPHICS_MODE="generic"
+  ARCHDEV_DOCTOR_ENABLE_GPU_OVERRIDES="false"
+
+  if [[ -f "$LAST_APPLY_FILE" ]]; then
+    # shellcheck disable=SC1090
+    source "$LAST_APPLY_FILE"
+    ARCHDEV_DOCTOR_PROFILE="${ARCHDEV_LAST_PROFILE:-$ARCHDEV_DOCTOR_PROFILE}"
+  fi
+
+  if [[ -f "$HOST_VARS_FILE" ]]; then
+    ARCHDEV_DOCTOR_HARDWARE_TYPE="$(read_host_var archdev_hardware_type "$HOST_VARS_FILE" || printf '%s' "$ARCHDEV_DOCTOR_HARDWARE_TYPE")"
+    ARCHDEV_DOCTOR_GRAPHICS_MODE="$(read_host_var archdev_graphics_mode "$HOST_VARS_FILE" || printf '%s' "$ARCHDEV_DOCTOR_GRAPHICS_MODE")"
+    ARCHDEV_DOCTOR_ENABLE_GPU_OVERRIDES="$(read_host_var archdev_enable_gpu_overrides "$HOST_VARS_FILE" || printf '%s' "$ARCHDEV_DOCTOR_ENABLE_GPU_OVERRIDES")"
+  fi
+}
+
+detect_virtualization_type() {
+  local virt_type=""
+
+  if command -v systemd-detect-virt >/dev/null 2>&1; then
+    virt_type="$(systemd-detect-virt 2>/dev/null || true)"
+  fi
+
+  if [[ -z "$virt_type" || "$virt_type" == "none" ]]; then
+    echo "baremetal"
+  else
+    echo "$virt_type"
+  fi
+}
+
+detect_cpu_vendor() {
+  local cpu_vendor="generic"
+
+  if command -v lscpu >/dev/null 2>&1; then
+    if lscpu | grep -qi 'AuthenticAMD\|AMD'; then
+      cpu_vendor="amd"
+    elif lscpu | grep -qi 'GenuineIntel\|Intel'; then
+      cpu_vendor="intel"
+    fi
+  fi
+
+  echo "$cpu_vendor"
+}
+
+detect_memory_mb() {
+  awk '/MemTotal:/ { printf "%d", $2 / 1024 }' /proc/meminfo
+}
+
+detect_graphics_mode() {
+  local virt_type="$1"
+  local graphics_mode="generic"
+  local lspci_output=""
+
+  if [[ "$virt_type" == "vmware" ]]; then
+    echo "vmware"
+    return 0
+  fi
+
+  if [[ "$virt_type" == "oracle" || "$virt_type" == "virtualbox" ]]; then
+    echo "virtualbox"
+    return 0
+  fi
+
+  if [[ "$virt_type" == "kvm" || "$virt_type" == "qemu" ]]; then
+    echo "kvm"
+    return 0
+  fi
+
+  if command -v lspci >/dev/null 2>&1; then
+    lspci_output="$(lspci 2>/dev/null | grep -Ei 'vga|3d|display' || true)"
+    if grep -qi 'vmware' <<< "$lspci_output"; then
+      graphics_mode="vmware"
+    elif grep -qi 'virtualbox' <<< "$lspci_output"; then
+      graphics_mode="virtualbox"
+    elif grep -qi 'nvidia' <<< "$lspci_output"; then
+      graphics_mode="nvidia"
+    elif grep -qi 'amd\|ati\|radeon' <<< "$lspci_output"; then
+      graphics_mode="amd"
+    elif grep -qi 'intel' <<< "$lspci_output"; then
+      graphics_mode="intel"
+    fi
+  fi
+
+  echo "$graphics_mode"
+}
+
+default_gpu_overrides() {
+  local graphics_mode="$1"
+
+  if [[ "$graphics_mode" == "amd" ]]; then
+    echo "true"
+  else
+    echo "false"
+  fi
+}
+
+default_zram() {
+  local memory_mb="$1"
+
+  if (( memory_mb >= 8000 )); then
+    echo "true"
+  else
+    echo "false"
+  fi
+}
+
+default_wlsunset() {
+  local virt_type="$1"
+
+  if [[ "$virt_type" == "baremetal" ]]; then
+    echo "true"
+  else
+    echo "false"
+  fi
+}
+
+prompt_with_default() {
+  local prompt_text="$1"
+  local default_value="$2"
+  local answer=""
+
+  read -r -p "$prompt_text [$default_value]: " answer
+  if [[ -z "$answer" ]]; then
+    echo "$default_value"
+  else
+    echo "$answer"
+  fi
+}
+
+normalize_bool() {
+  local value="${1:-false}"
+  case "${value,,}" in
+    y|yes|true|1|on)
+      echo "true"
+      ;;
+    *)
+      echo "false"
+      ;;
+  esac
+}
+
+detect_drm_path_by_index() {
+  local index="$1"
+  local path=""
+
+  if compgen -G "/dev/dri/by-path/*-card" >/dev/null 2>&1; then
+    path="$(printf '%s\n' /dev/dri/by-path/*-card | sort | sed -n "${index}p" || true)"
+  fi
+
+  echo "$path"
+}
+
+configure_hardware_profile() {
+  local virt_type cpu_vendor memory_mb graphics_mode
+  local enable_gpu_overrides enable_zram enable_wlsunset sddm_theme
+  local primary_drm_path secondary_drm_path use_detected answer
+
+  ensure_host_vars_dir
+
+  virt_type="$(detect_virtualization_type)"
+  cpu_vendor="$(detect_cpu_vendor)"
+  memory_mb="$(detect_memory_mb)"
+  graphics_mode="$(detect_graphics_mode "$virt_type")"
+  enable_gpu_overrides="$(default_gpu_overrides "$graphics_mode")"
+  enable_zram="$(default_zram "$memory_mb")"
+  enable_wlsunset="$(default_wlsunset "$virt_type")"
+  sddm_theme="catppuccin-auto"
+  primary_drm_path="$(detect_drm_path_by_index 1)"
+  secondary_drm_path="$(detect_drm_path_by_index 2)"
+
+  section "Hardware detectado"
+  echo "Host vars alvo: $HOST_VARS_FILE"
+  echo "- Ambiente: $virt_type"
+  echo "- CPU: $cpu_vendor"
+  echo "- RAM: ${memory_mb} MB"
+  echo "- Gráficos: $graphics_mode"
+  echo "- GPU overrides: $enable_gpu_overrides"
+  echo "- ZRAM: $enable_zram"
+  echo "- Wlsunset: $enable_wlsunset"
+  echo "- Tema SDDM: $sddm_theme"
+
+  if [[ "$enable_gpu_overrides" == "true" ]]; then
+    echo "- DRM primário: ${primary_drm_path:-<não detetado>}"
+    echo "- DRM secundário: ${secondary_drm_path:-<não detetado>}"
+  fi
+
+  echo ""
+  read -r -p "Usar esta configuração detectada? [Y/n] " answer
+  use_detected="${answer:-Y}"
+
+  if [[ ! "$use_detected" =~ ^[Yy]$ ]]; then
+    echo ""
+    echo ">>> Ajuste assistido"
+    virt_type="$(prompt_with_default "Ambiente (baremetal/vmware/virtualbox/kvm)" "$virt_type")"
+    cpu_vendor="$(prompt_with_default "CPU vendor (amd/intel/generic)" "$cpu_vendor")"
+    memory_mb="$(prompt_with_default "RAM em MB" "$memory_mb")"
+    graphics_mode="$(prompt_with_default "Modo gráfico (generic/amd/intel/nvidia/vmware/virtualbox/kvm)" "$graphics_mode")"
+    enable_gpu_overrides="$(normalize_bool "$(prompt_with_default "Ativar overrides de GPU? (true/false)" "$enable_gpu_overrides")")"
+    enable_zram="$(normalize_bool "$(prompt_with_default "Ativar zram? (true/false)" "$enable_zram")")"
+    enable_wlsunset="$(normalize_bool "$(prompt_with_default "Ativar wlsunset? (true/false)" "$enable_wlsunset")")"
+    sddm_theme="$(prompt_with_default "Tema SDDM (default ou nome do tema)" "$sddm_theme")"
+    if [[ "$enable_gpu_overrides" == "true" ]]; then
+      primary_drm_path="$(prompt_with_default "DRM primário" "${primary_drm_path:-/dev/dri/by-path/SEU-DRM-PRIMARIO-card}")"
+      secondary_drm_path="$(prompt_with_default "DRM secundário" "${secondary_drm_path:-/dev/dri/by-path/SEU-DRM-SECUNDARIO-card}")"
+    fi
+  fi
+
+  cat > "$HOST_VARS_FILE" <<EOF
+---
+archdev_detected_hostname: "$HOST_NAME"
+archdev_hardware_type: "$virt_type"
+archdev_cpu_vendor: "$cpu_vendor"
+archdev_target_ram_mb: $memory_mb
+archdev_graphics_mode: "$graphics_mode"
+archdev_enable_gpu_overrides: $enable_gpu_overrides
+archdev_enable_zram: $enable_zram
+archdev_enable_wlsunset: $enable_wlsunset
+archdev_sddm_theme: "$sddm_theme"
+EOF
+
+  if [[ "$enable_gpu_overrides" == "true" ]]; then
+    cat >> "$HOST_VARS_FILE" <<EOF
+primary_gpu_drm_path: "$primary_drm_path"
+secondary_gpu_drm_path: "$secondary_drm_path"
+EOF
+  fi
+
+  echo ""
+  echo ">>> Host vars gravado em: $HOST_VARS_FILE"
+}
+
+show_rollback_hint() {
+  if [[ -f "$LAST_APPLY_FILE" ]]; then
+    # shellcheck disable=SC1090
+    source "$LAST_APPLY_FILE"
+    if [[ -n "${ARCHDEV_PRE_SNAPSHOT:-}" ]]; then
+      echo "    Snapshot pre-apply disponivel: ${ARCHDEV_PRE_SNAPSHOT}"
+      echo "    Para listar snapshots: scripts/archdev rollback list"
+      echo "    Para reverter:       scripts/archdev rollback ${ARCHDEV_PRE_SNAPSHOT}"
+    fi
+  fi
+}
+
+sudo_with_pass() {
+  if [[ -n "$PASS_FILE" && -f "$PASS_FILE" ]]; then
+    sudo -S "$@" < "$PASS_FILE"
+  else
+    need_root "$@"
+  fi
+}
+
+can_use_snapper() {
+  command -v snapper >/dev/null 2>&1 && sudo_with_pass snapper -c root get-config >/dev/null 2>&1
+}
+
+create_snapshot() {
+  local phase="$1"
+  local profile="$2"
+  local ts snapshot_id description line
+
+  ensure_state_dir
+
+  if ! can_use_snapper; then
+    echo "[aviso] Snapper não disponível; a aplicar sem snapshot $phase"
+    return 0
+  fi
+
+  ts="$(date +%Y%m%d-%H%M%S)"
+  description="ArchDev4-${phase}-${profile}-${ts}"
+  line="$(sudo_with_pass snapper -c root create --print-number --description "$description" --cleanup-algorithm number 2>/dev/null | tail -n1 | tr -d '[:space:]' || true)"
+  snapshot_id="${line##*=}"
+  snapshot_id="${snapshot_id:-$line}"
+
+  if [[ -n "$snapshot_id" ]]; then
+    echo "[ok] snapshot $phase criado: $snapshot_id ($description)"
+    printf 'ARCHDEV_%s_SNAPSHOT=%s\n' "${phase^^}" "$snapshot_id" >> "$LAST_APPLY_FILE"
+    printf 'ARCHDEV_%s_DESCRIPTION=%q\n' "${phase^^}" "$description" >> "$LAST_APPLY_FILE"
+  else
+    echo "[aviso] não foi possível determinar o ID do snapshot $phase"
+  fi
+}
+
+write_apply_state_header() {
+  local profile="$1"
+  ensure_state_dir
+  cat > "$LAST_APPLY_FILE" <<EOF
+ARCHDEV_LAST_PROFILE=$profile
+ARCHDEV_LAST_APPLY_TS=$(date +%Y%m%d-%H%M%S)
+EOF
+}
+
+capture_sudo_password() {
+  local sudo_pass
+
+  echo ""
+  echo ">>> Autenticação sudo necessária"
+  read -r -s -p "Password sudo: " sudo_pass
+  echo ""
+
+  if ! printf '%s\n' "$sudo_pass" | sudo -S true 2>/dev/null; then
+    echo "❌ Password sudo incorreta"
+    exit 1
+  fi
+
+  PASS_FILE=$(mktemp /tmp/.archdev-pass-XXXXXX)
+  chmod 600 "$PASS_FILE"
+  printf '%s\n' "$sudo_pass" > "$PASS_FILE"
+}
+
+cmd_init() {
+  echo ">>> ArchDev init"
+  need_root pacman -Sy --noconfirm --needed git ansible
+}
+
+cmd_apply() {
+  local profile="${1:-$PROFILE}"
+  local apply_rc=0
+  local doctor_rc=0
+
+  capture_sudo_password
+  trap cleanup EXIT INT TERM
+  configure_hardware_profile
+
+  write_apply_state_header "$profile"
+  create_snapshot pre "$profile"
+
+  if ansible-playbook \
+    -i "$ROOT_DIR/inventory/hosts.yml" \
+    "$ROOT_DIR/playbooks/site-4.yml" \
+    --become-password-file="$PASS_FILE" \
+    -e "archdev_profile=${profile}"; then
+    apply_rc=0
+  else
+    apply_rc=$?
+    echo ""
+    echo ">>> O apply falhou antes da validacao final"
+    show_rollback_hint
+    return $apply_rc
+  fi
+
+  create_snapshot post "$profile"
+
+  echo ""
+  echo ">>> A correr doctor pós-apply"
+  if ! cmd_doctor; then
+    doctor_rc=$?
+  fi
+
+  if [[ $doctor_rc -ne 0 ]]; then
+    echo ""
+    echo ">>> O doctor encontrou problemas após o apply"
+    show_rollback_hint
+    return $doctor_rc
+  fi
+}
+
+cmd_status() {
+  echo "ArchDev status"
+  echo "============="
+  echo "Repo: $ROOT_DIR"
+  echo "Perfil por omissão: $PROFILE"
+  echo ""
+  echo "Ferramentas:"
+  for cmd in ansible docker psql opencode laravel git; do
+    if command -v "$cmd" >/dev/null 2>&1; then
+      echo "  - $cmd: ok"
+    else
+      echo "  - $cmd: ausente"
+    fi
+  done
+  echo ""
+  echo "Serviços:"
+  for svc in NetworkManager docker postgresql bluetooth; do
+    if systemctl is-enabled "$svc" >/dev/null 2>&1; then
+      echo "  - $svc: enabled"
+    else
+      echo "  - $svc: disabled/ausente"
+    fi
+  done
+
+  if [[ -f "$LAST_APPLY_FILE" ]]; then
+    echo ""
+    echo "Último apply:"
+    cat "$LAST_APPLY_FILE"
+  fi
+}
+
+cmd_doctor() {
+  local failures=0
+  local warnings=0
+
+  load_runtime_context
+
+  check_cmd() {
+    local cmd="$1"
+    local label="${2:-$1}"
+    if command -v "$cmd" >/dev/null 2>&1; then
+      echo "[ok] comando: $label"
+    else
+      echo "[falha] comando ausente: $label"
+      failures=$((failures + 1))
+    fi
+  }
+
+  check_service() {
+    local svc="$1"
+    local label="${2:-$1}"
+    if systemctl is-active --quiet "$svc"; then
+      echo "[ok] serviço: $label"
+    else
+      echo "[falha] serviço inactivo: $label"
+      failures=$((failures + 1))
+    fi
+  }
+
+  warn() {
+    echo "[aviso] $1"
+    warnings=$((warnings + 1))
+  }
+
+  require_for_dev() {
+    [[ "$ARCHDEV_DOCTOR_PROFILE" == "dev" || "$ARCHDEV_DOCTOR_PROFILE" == "full" ]]
+  }
+
+  require_for_full() {
+    [[ "$ARCHDEV_DOCTOR_PROFILE" == "full" ]]
+  }
+
+  is_virtualized_guest() {
+    [[ "$ARCHDEV_DOCTOR_HARDWARE_TYPE" != "baremetal" ]]
+  }
+
+check_file() {
+    local path="$1"
+    local label="${2:-$1}"
+    if [[ -e "$path" ]]; then
+      echo "[ok] ficheiro: $label"
+    else
+      echo "[falha] ficheiro ausente: $label"
+      failures=$((failures + 1))
+    fi
+  }
+
+  check_enabled() {
+    local svc="$1"
+    local label="${2:-$1}"
+    if systemctl is-enabled "$svc" >/dev/null 2>&1; then
+      echo "[ok] serviço activado: $label"
+    else
+      warn "serviço não activado: $label"
+    fi
+  }
+
+  check_cmd_profiled() {
+    local cmd="$1"
+    local label="$2"
+    local requirement="$3"
+
+    if command -v "$cmd" >/dev/null 2>&1; then
+      echo "[ok] comando: $label"
+      return 0
+    fi
+
+    if [[ "$requirement" == "required" ]]; then
+      echo "[falha] comando ausente: $label"
+      failures=$((failures + 1))
+    else
+      warn "comando opcional ausente para o perfil ${ARCHDEV_DOCTOR_PROFILE}: $label"
+    fi
+  }
+
+  check_service_profiled() {
+    local svc="$1"
+    local label="$2"
+    local requirement="$3"
+
+    if systemctl is-active --quiet "$svc"; then
+      echo "[ok] serviço: $label"
+      return 0
+    fi
+
+    if [[ "$requirement" == "required" ]]; then
+      echo "[falha] serviço inactivo: $label"
+      failures=$((failures + 1))
+    else
+      warn "serviço opcional inactivo para o perfil ${ARCHDEV_DOCTOR_PROFILE}: $label"
+    fi
+  }
+
+  check_enabled_profiled() {
+    local svc="$1"
+    local label="$2"
+    local requirement="$3"
+
+    if systemctl is-enabled "$svc" >/dev/null 2>&1; then
+      echo "[ok] serviço activado: $label"
+      return 0
+    fi
+
+    if [[ "$requirement" == "required" ]]; then
+      warn "serviço obrigatório não activado: $label"
+    else
+      warn "serviço opcional não activado para o perfil ${ARCHDEV_DOCTOR_PROFILE}: $label"
+    fi
+  }
+
+  check_file_profiled() {
+    local path="$1"
+    local label="$2"
+    local requirement="$3"
+
+    if [[ -e "$path" ]]; then
+      echo "[ok] ficheiro: $label"
+      return 0
+    fi
+
+    if [[ "$requirement" == "required" ]]; then
+      echo "[falha] ficheiro ausente: $label"
+      failures=$((failures + 1))
+    else
+      warn "ficheiro opcional ausente para o perfil ${ARCHDEV_DOCTOR_PROFILE}: $label"
+    fi
+  }
+
+  echo ">>> ArchDev doctor"
+  echo "[info] perfil activo: ${ARCHDEV_DOCTOR_PROFILE}"
+  echo "[info] hardware: ${ARCHDEV_DOCTOR_HARDWARE_TYPE} / graficos: ${ARCHDEV_DOCTOR_GRAPHICS_MODE}"
+
+  section "Base"
+  check_cmd ansible
+  check_cmd git
+  check_cmd curl
+  check_cmd sudo
+
+  section "Sistema"
+  check_service NetworkManager
+  check_enabled NetworkManager
+
+  if is_virtualized_guest; then
+    warn "bluetooth ignorado em ambiente virtualizado (${ARCHDEV_DOCTOR_HARDWARE_TYPE})"
+  else
+    check_service bluetooth
+    check_enabled bluetooth
+  fi
+
+  check_service sshd
+  check_enabled sshd
+  check_service ufw
+  check_enabled ufw
+
+  if command -v findmnt >/dev/null 2>&1; then
+    if [[ "$(findmnt -n -o FSTYPE / 2>/dev/null || true)" == "btrfs" ]]; then
+      echo "[ok] root em Btrfs"
+    else
+      warn "root não está em Btrfs"
+    fi
+  fi
+
+  if command -v snapper >/dev/null 2>&1; then
+    if sudo_with_pass snapper -c root get-config >/dev/null 2>&1; then
+      echo "[ok] snapper root configurado"
+    else
+      warn "snapper instalado mas configuração root não está pronta"
+    fi
+  else
+    warn "snapper ausente"
+  fi
+
+  check_file /boot/limine/limine.conf "configuração Limine"
+
+  section "Desktop"
+  check_cmd Hyprland "Hyprland"
+  check_cmd waybar
+  check_cmd rofi
+  check_cmd kitty
+  check_cmd firefox
+
+  if [[ "$ARCHDEV_DOCTOR_ENABLE_GPU_OVERRIDES" == "true" ]]; then
+    check_file /etc/environment.d/90-archdev-gpu.conf "override de GPU"
+  else
+    echo "[ok] override de GPU não requerido para ${ARCHDEV_DOCTOR_GRAPHICS_MODE}"
+  fi
+
+  section "Desenvolvimento"
+  if require_for_dev; then
+    check_cmd_profiled php "php" required
+    check_cmd_profiled composer "composer" required
+    check_cmd_profiled laravel "laravel" required
+    check_cmd_profiled python "python" required
+    check_cmd_profiled poetry "poetry" required
+    check_cmd_profiled node "node" required
+    check_cmd_profiled npm "npm" required
+    check_cmd_profiled opencode "opencode" required
+    check_cmd_profiled docker "docker" required
+    check_cmd_profiled psql "psql" required
+    check_cmd_profiled pg_isready "pg_isready" required
+  else
+    check_cmd_profiled python "python" optional
+    check_cmd_profiled php "php" optional
+    check_cmd_profiled composer "composer" optional
+    check_cmd_profiled laravel "laravel" optional
+    check_cmd_profiled poetry "poetry" optional
+    check_cmd_profiled node "node" optional
+    check_cmd_profiled npm "npm" optional
+    check_cmd_profiled opencode "opencode" optional
+    check_cmd_profiled docker "docker" optional
+    check_cmd_profiled psql "psql" optional
+    check_cmd_profiled pg_isready "pg_isready" optional
+  fi
+
+  if require_for_dev && command -v php >/dev/null 2>&1; then
+    php -m | grep -q '^pdo_pgsql$' && echo "[ok] extensão PHP: pdo_pgsql" || { echo "[falha] extensão PHP ausente: pdo_pgsql"; failures=$((failures + 1)); }
+    php -m | grep -q '^mbstring$' && echo "[ok] extensão PHP: mbstring" || { echo "[falha] extensão PHP ausente: mbstring"; failures=$((failures + 1)); }
+  fi
+
+  if require_for_dev; then
+    check_service_profiled docker "docker" required
+    check_enabled_profiled docker "docker" required
+  else
+    check_service_profiled docker "docker" optional
+    check_enabled_profiled docker "docker" optional
+  fi
+
+  if require_for_dev && command -v docker >/dev/null 2>&1; then
+    if docker info >/dev/null 2>&1; then
+      echo "[ok] acesso Docker sem sudo"
+    else
+      warn "Docker instalado mas o utilizador actual pode ainda precisar de logout/login"
+    fi
+  fi
+
+  if require_for_dev; then
+    check_service_profiled postgresql "postgresql" required
+    check_enabled_profiled postgresql "postgresql" required
+  else
+    check_service_profiled postgresql "postgresql" optional
+    check_enabled_profiled postgresql "postgresql" optional
+  fi
+
+  if require_for_dev && command -v pg_isready >/dev/null 2>&1; then
+    if pg_isready -q; then
+      echo "[ok] PostgreSQL responde a pg_isready"
+    else
+      warn "PostgreSQL activo mas ainda não responde a pg_isready"
+    fi
+  fi
+
+  section "Helpers"
+  if require_for_dev; then
+    check_file_profiled /usr/local/bin/archdev-postgresql-setup "archdev-postgresql-setup" required
+    check_file_profiled /usr/local/bin/archdev-bitwarden-setup "archdev-bitwarden-setup" required
+    check_file_profiled /usr/local/bin/archdev-backup-keys "archdev-backup-keys" required
+    check_file_profiled /usr/local/bin/archdev-gpu-status "archdev-gpu-status" required
+  else
+    check_file_profiled /usr/local/bin/archdev-postgresql-setup "archdev-postgresql-setup" optional
+    check_file_profiled /usr/local/bin/archdev-bitwarden-setup "archdev-bitwarden-setup" optional
+    check_file_profiled /usr/local/bin/archdev-backup-keys "archdev-backup-keys" optional
+    check_file_profiled /usr/local/bin/archdev-gpu-status "archdev-gpu-status" optional
+  fi
+
+  if [[ -x /usr/local/bin/archdev-gpu-status ]]; then
+    /usr/local/bin/archdev-gpu-status || true
+  fi
+
+  if [[ $failures -gt 0 ]]; then
+    echo ""
+    echo ">>> Doctor terminou com $failures falha(s) e $warnings aviso(s)"
+    return 1
+  fi
+
+  echo ""
+  echo ">>> Doctor sem falhas${warnings:+ ($warnings aviso(s))}"
+  return 0
+}
+
+cmd_rollback() {
+  local action="${1:-list}"
+
+  capture_sudo_password
+  trap cleanup EXIT INT TERM
+
+  if ! can_use_snapper; then
+    echo "❌ Snapper não está disponível/configurado."
+    exit 1
+  fi
+
+  if [[ "$action" == "list" ]]; then
+    sudo_with_pass snapper -c root list
+    return 0
+  fi
+
+  if [[ ! "$action" =~ ^[0-9]+$ ]]; then
+    echo "❌ Snapshot inválido: $action"
+    echo "Use: scripts/archdev rollback list"
+    exit 1
+  fi
+
+  echo "⚠️  Vai ser executado rollback para o snapshot $action"
+  read -r -p "Confirmar rollback? [y/N] " confirm
+  if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+    echo "Rollback cancelado."
+    exit 1
+  fi
+
+  sudo_with_pass snapper -c root rollback "$action"
+  echo "✅ Rollback executado. Reinicie o sistema para aplicar totalmente."
+}
+
+main() {
+  local cmd="${1:-}"
+  case "$cmd" in
+    init)
+      shift
+      cmd_init "$@"
+      ;;
+    apply)
+      shift
+      cmd_apply "$@"
+      ;;
+    status)
+      shift
+      cmd_status "$@"
+      ;;
+    doctor)
+      shift
+      cmd_doctor "$@"
+      ;;
+    rollback)
+      shift
+      cmd_rollback "$@"
+      ;;
+    ""|-h|--help|help)
+      usage
+      ;;
+    *)
+      echo "Comando inválido: $cmd"
+      echo ""
+      usage
+      exit 1
+      ;;
+  esac
+}
+
+main "$@"

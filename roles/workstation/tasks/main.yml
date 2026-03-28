@@ -1,0 +1,7 @@
+---
+- name: Create standard user directories (Desktop, Downloads, etc.)
+  command: xdg-user-dirs-update
+  become: yes
+  become_user: "{{ target_user }}"
+  changed_when: false
+  tags: [system, xdg]

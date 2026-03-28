@@ -1,0 +1,5 @@
+---
+archdev_feature_docker_packages:
+  - docker
+  - docker-compose
+  - lazydocker

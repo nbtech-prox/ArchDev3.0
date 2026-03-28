@@ -1,0 +1,11 @@
+---
+archdev_profile_name: minimal
+feature_desktop: true
+feature_dev: false
+feature_full: false
+feature_laravel: false
+feature_postgresql: false
+feature_docker: false
+feature_opencode: false
+feature_redis: false
+feature_dbeaver: false

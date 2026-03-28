@@ -71,27 +71,3 @@
     group: "{{ target_user }}"
     mode: '0755'
   tags: [desktop, kvantum]
-
-# Nota: gsettings requer sessão D-Bus ativa. Na instalação limpa (sem GUI),
-# estas tasks falham silenciosamente. Os temas são aplicados via ficheiros
-# estáticos em GTK-3.0/GTK-4.0/Kvantum (role dotfiles) como fallback seguro.
-- name: Apply GTK Theme (Catppuccin Mocha)
-  command: gsettings set org.gnome.desktop.interface gtk-theme 'catppuccin-mocha-mauve-standard+default'
-  become: no
-  ignore_errors: true
-  changed_when: false
-  tags: [desktop, theme, apply]
-
-- name: Apply Icon Theme (Papirus)
-  command: gsettings set org.gnome.desktop.interface icon-theme 'Papirus-Dark'
-  become: no
-  ignore_errors: true
-  changed_when: false
-  tags: [desktop, theme, apply]
-
-- name: Apply Cursor Theme (Catppuccin Mocha)
-  command: gsettings set org.gnome.desktop.interface cursor-theme 'Catppuccin-Mocha-Dark-Cursors'
-  become: no
-  ignore_errors: true
-  changed_when: false
-  tags: [desktop, theme, apply]

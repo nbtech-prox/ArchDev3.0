@@ -52,7 +52,7 @@
   ignore_errors: yes
   tags: [desktop, wallpaper]
 
-# --- Garantir permissões corretas (fix para swww) ---
+# --- Garantir permissões corretas (fix para awww) ---
 - name: Ensure .config directory has correct ownership (fix parent permissions)
   file:
     path: "{{ target_home }}/.config"
@@ -62,7 +62,7 @@
     mode: '0755'
   tags: [desktop, wallpaper]
 
-- name: Ensure wallpaper file has correct permissions for swww
+- name: Ensure wallpaper file has correct permissions for awww
   file:
     path: "{{ target_home }}/.config/wallpapers/wallpaper.png"
     owner: "{{ target_user }}"
@@ -82,4 +82,4 @@
     msg: >-
       {{ '✅ Wallpaper deployed successfully (' ~ wallpaper_deployed.stat.size ~ ' bytes)'
          if wallpaper_deployed.stat.exists
-         else '❌ WARNING: Wallpaper NOT deployed! swww will show no background.' }}
+         else '❌ WARNING: Wallpaper NOT deployed! awww will show no background.' }}

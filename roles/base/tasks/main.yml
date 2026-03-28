@@ -1,0 +1,12 @@
+---
+- name: Update system packages (Arch Linux)
+  pacman:
+    update_cache: yes
+    upgrade: yes
+  tags: [system, update]
+
+- name: Install base system utilities
+  pacman:
+    name: "{{ packages_system + (packages_system_full if feature_full | default(false) | bool else []) }}"
+    state: present
+  tags: [system, base]

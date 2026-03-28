@@ -5,9 +5,9 @@
     state: restarted
   become: yes
 
-- name: Restart MariaDB
+- name: Restart PostgreSQL
   systemd:
-    name: mariadb
+    name: postgresql
     state: restarted
 
 - name: Restart Apache

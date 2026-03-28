@@ -1,0 +1,104 @@
+---
+- name: ArchDev 4.0 Declarative Workstation Apply
+  hosts: all
+  become: true
+  vars:
+    archdev_profile: "{{ archdev_profile | default('full') }}"
+    archdev_profile_vars_file: "{{ playbook_dir }}/../inventories/group_vars/profiles/{{ archdev_profile }}.yml"
+    archdev_host_identity: "{{ (inventory_hostname == 'localhost') | ternary(ansible_facts['hostname'] | default(inventory_hostname), inventory_hostname) }}"
+    archdev_host_vars_file: "{{ playbook_dir }}/../inventories/host_vars/{{ archdev_host_identity }}.yml"
+    archdev_feature_vars_files:
+      - "{{ playbook_dir }}/../inventories/group_vars/features/desktop.yml"
+      - "{{ playbook_dir }}/../inventories/group_vars/features/laravel.yml"
+      - "{{ playbook_dir }}/../inventories/group_vars/features/postgresql.yml"
+      - "{{ playbook_dir }}/../inventories/group_vars/features/docker.yml"
+      - "{{ playbook_dir }}/../inventories/group_vars/features/opencode.yml"
+
+  pre_tasks:
+    - name: Validate selected declarative profile
+      fail:
+        msg: "❌ Perfil inválido: {{ archdev_profile }}. Use minimal, dev ou full."
+      when: archdev_profile not in ['minimal', 'dev', 'full']
+      tags: [always, profile]
+
+    - name: Load profile vars
+      include_vars:
+        file: "{{ archdev_profile_vars_file }}"
+      tags: [always, profile]
+
+    - name: Load feature vars files
+      include_vars:
+        file: "{{ item }}"
+      loop: "{{ archdev_feature_vars_files }}"
+      tags: [always, features]
+
+    - name: Check for host-specific vars file
+      stat:
+        path: "{{ archdev_host_vars_file }}"
+      register: archdev_host_vars_stat
+      tags: [always, hostvars]
+
+    - name: Load host-specific vars
+      include_vars:
+        file: "{{ archdev_host_vars_file }}"
+      when: archdev_host_vars_stat.stat.exists
+      tags: [always, hostvars]
+
+    - name: Map declarative features to current 3.x compatibility facts
+      set_fact:
+        archdev_enable_dev: "{{ feature_dev | default(archdev_profile in ['dev', 'full']) | bool }}"
+        archdev_enable_full: "{{ feature_full | default(archdev_profile == 'full') | bool }}"
+      tags: [always, profile]
+
+    - name: Configure sudo timeout (30 minutes)
+      lineinfile:
+        path: /etc/sudoers.d/timeout
+        line: 'Defaults timestamp_timeout=30'
+        create: yes
+        owner: root
+        group: root
+        mode: '0440'
+        validate: 'visudo -cf %s'
+      tags: [always, sudo]
+
+    - name: Validate Arch Linux
+      fail:
+        msg: "❌ Este playbook é exclusivo para Arch Linux. Detectado: {{ ansible_facts['distribution'] }}"
+      when: ansible_facts['distribution'] != 'Archlinux'
+      tags: [always, validation]
+
+    - name: Display declarative apply summary
+      debug:
+        msg: |
+          🔧 ArchDev 4.0 - Apply Declarativo
+          • Perfil: {{ archdev_profile }}
+          • Host vars: {{ archdev_host_vars_file if archdev_host_vars_stat.stat.exists else 'nenhum ficheiro específico' }}
+          • Desktop: {{ feature_desktop | default(false) }}
+          • Development: {{ feature_dev | default(false) }}
+          • Laravel: {{ feature_laravel | default(false) }}
+          • PostgreSQL: {{ feature_postgresql | default(false) }}
+          • Docker: {{ feature_docker | default(false) }}
+          • OpenCode: {{ feature_opencode | default(false) }}
+          • Redis: {{ feature_redis | default(false) }}
+          • DBeaver: {{ feature_dbeaver | default(false) }}
+      tags: [always, validation]
+
+  roles:
+    - base
+    - security
+    - aur
+    - workstation
+    - btrfs
+    - role: desktop
+      when: feature_desktop | default(true) | bool
+    - role: dev_core
+      when: feature_dev | default(false) | bool
+    - role: docker
+      when: feature_docker | default(false) | bool
+    - role: laravel
+      when: feature_laravel | default(false) | bool
+    - role: postgresql
+      when: feature_postgresql | default(false) | bool
+    - role: opencode
+      when: feature_opencode | default(false) | bool
+    - dotfiles

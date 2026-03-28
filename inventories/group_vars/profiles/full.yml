@@ -1,0 +1,11 @@
+---
+archdev_profile_name: full
+feature_desktop: true
+feature_dev: true
+feature_full: true
+feature_laravel: true
+feature_postgresql: true
+feature_docker: true
+feature_opencode: true
+feature_redis: true
+feature_dbeaver: true

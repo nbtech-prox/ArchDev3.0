@@ -4,6 +4,19 @@
   become: true
   
   pre_tasks:
+    - name: Set ArchDev profile facts
+      set_fact:
+        archdev_profile: "{{ archdev_profile | default('full') }}"
+        archdev_enable_dev: "{{ (archdev_profile | default('full')) in ['dev', 'full'] }}"
+        archdev_enable_full: "{{ (archdev_profile | default('full')) == 'full' }}"
+      tags: [always, profile]
+
+    - name: Validate selected ArchDev profile
+      fail:
+        msg: "❌ Perfil inválido: {{ archdev_profile }}. Use minimal, dev ou full."
+      when: archdev_profile not in ['minimal', 'dev', 'full']
+      tags: [always, profile]
+
     # --- SUDO TIMEOUT (PRIMEIRO DE TUDO - evita prompts de senha) ---
     - name: Configure sudo timeout (30 minutes)
       lineinfile:
@@ -47,6 +60,7 @@
       debug:
         msg: |
           🔧 ArchDev 3.0 - Informações do Sistema:
+          • Perfil: {{ archdev_profile }}
           • Distribuição: {{ ansible_facts['distribution'] }} {{ ansible_facts['distribution_version'] }}
           • Kernel: {{ ansible_facts['kernel'] }}
           • Filesystem Root: {{ ansible_facts['mounts'] | selectattr('mount', 'equalto', '/') | map(attribute='fstype') | first | default('desconhecido') }}
@@ -58,5 +72,6 @@
     - common
     - system
     - desktop
-    - dev
+    - role: dev
+      when: archdev_enable_dev | bool
     - dotfiles

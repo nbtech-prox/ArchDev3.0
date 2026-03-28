@@ -255,3 +255,37 @@
   become: yes
   tags: [system, performance]
 
+- name: Install zram generator package
+  pacman:
+    name: zram-generator
+    state: present
+  become: yes
+  when:
+    - archdev_enable_zram | default(true) | bool
+    - ansible_facts['memtotal_mb'] | int >= 32000
+  tags: [system, performance, zram]
+
+- name: Configure zram generator
+  copy:
+    src: zram-generator.conf
+    dest: /etc/systemd/zram-generator.conf
+    owner: root
+    group: root
+    mode: '0644'
+  become: yes
+  when:
+    - archdev_enable_zram | default(true) | bool
+    - ansible_facts['memtotal_mb'] | int >= 32000
+  tags: [system, performance, zram]
+
+- name: Start zram device service
+  systemd:
+    name: systemd-zram-setup@zram0.service
+    enabled: yes
+    state: started
+    daemon_reload: yes
+  become: yes
+  when:
+    - archdev_enable_zram | default(true) | bool
+    - ansible_facts['memtotal_mb'] | int >= 32000
+  tags: [system, performance, zram]
