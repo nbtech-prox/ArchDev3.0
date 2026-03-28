@@ -120,6 +120,17 @@
   when: root_fstype == 'btrfs'
   tags: [system, btrfs, boot]
 
+- name: Install standalone ArchDev rollback helper
+  copy:
+    src: archdev-rollback
+    dest: /usr/local/bin/archdev-rollback
+    mode: '0755'
+    owner: root
+    group: root
+  become: yes
+  when: root_fstype == 'btrfs'
+  tags: [system, btrfs, snapper]
+
 - name: Check if Limine config exists
   stat:
     path: /boot/limine/limine.conf

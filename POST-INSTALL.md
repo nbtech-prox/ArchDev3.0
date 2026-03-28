@@ -40,6 +40,17 @@ Dentro de um projeto, corre depois:
 - `archdev-backup-keys` - Backup de chaves SSH + GPG
 - `git-autosync` - Sincronização automática de repos
 
+### Rollback global do sistema
+
+O helper `archdev-rollback` fica instalado em `/usr/local/bin` e não depende da pasta `~/ArchDev3.0`.
+
+```bash
+archdev-rollback list
+archdev-rollback last
+archdev-rollback 75
+archdev-rollback create pre-update-manual
+```
+
 ## 4. Atalhos Principais
 
 ### Sistema

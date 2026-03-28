@@ -104,12 +104,14 @@ scripts/archdev apply full
 scripts/archdev status
 scripts/archdev doctor
 scripts/archdev rollback list
+archdev-rollback list
 ```
 
 > O `setup.sh` continua a ser o caminho estável da 3.x. O `scripts/archdev apply` já usa a nova entrada declarativa `playbooks/site-4.yml`.
 > No fluxo 4.0, o `apply` já cria snapshots pre/post quando o `snapper` está disponível e corre `doctor` automaticamente no fim.
 > Antes do `apply`, o wrapper deteta o hardware da máquina, mostra um resumo assistido e grava `inventories/host_vars/<hostname>.yml` com defaults seguros.
 > O fluxo 4.0 já foi validado em VM Arch Linux limpa com os perfis `minimal` e `full`, incluindo sessão `Hyprland`, `SDDM`, `doctor`, Docker, PostgreSQL e OpenCode.
+> Para não depender de `~/ArchDev3.0`, o sistema também instala o helper global `archdev-rollback`, dedicado a snapshots e rollback.
 
 Perfis disponíveis:
 
