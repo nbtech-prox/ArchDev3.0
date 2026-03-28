@@ -1,0 +1,19 @@
+#!/bin/bash
+
+set -euo pipefail
+
+WALLPAPER_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/wallpapers"
+PICKER_DIR="${XDG_PICTURES_DIR:-$HOME/Pictures}"
+
+mapfile -t WALLPAPERS < <(find "$WALLPAPER_DIR" "$PICKER_DIR" -maxdepth 2 -type f \( -iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.webp' \) 2>/dev/null | sort -u)
+
+if [[ ${#WALLPAPERS[@]} -eq 0 ]]; then
+  echo "Nenhum wallpaper encontrado." >&2
+  exit 1
+fi
+
+CHOICE="$(printf '%s
+
+if [[ -n "$CHOICE" ]]; then
+  exec archdev-set-wallpaper "$CHOICE"
+fi

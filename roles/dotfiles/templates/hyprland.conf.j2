@@ -19,7 +19,7 @@ exec-once = dunst
 exec-once = dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP
 exec-once = udiskie &
 exec-once = awww-daemon &
-exec-once = sleep 1 && awww img ~/.config/wallpapers/wallpaper.png --transition-type grow --transition-pos 0.9,0.9
+exec-once = sleep 1 && archdev-set-wallpaper --restore
 exec-once = wl-paste --watch cliphist store
 exec-once = network-manager-applet & nm-applet --indicator
 exec-once = /usr/lib/polkit-kde-authentication-agent-1
@@ -29,6 +29,8 @@ exec-once = hypridle
 exec-once = wlsunset -l {{ wlsunset_latitude | default('38.7') }} -L {{ wlsunset_longitude | default('-9.1') }} &
 {% endif %}
 # Nota: O Night Mode pode ser forçado/desligado com Super+Shift+N
+
+source = ~/.config/archdev/theme/hypr-theme.conf
 
 # --- DEFINIÇÃO DE PROGRAMAS ---
 $terminal = kitty
@@ -200,6 +202,7 @@ bind = $mainMod, E, exec, $fileManager
 bind = $mainMod, SPACE, exec, $menu
 bind = $mainMod, A, exec, $ide
 bind = $mainMod, P, exec, rofi-rbw
+bind = $mainMod SHIFT, W, exec, archdev-wallpaper-picker
 bind = $mainMod SHIFT, E, exec, rofi -show emoji
 bind = $mainMod SHIFT, C, exec, rofi -show calc
 bind = $mainMod, F, fullscreen

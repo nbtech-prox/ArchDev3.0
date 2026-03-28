@@ -132,6 +132,7 @@ Perfis disponíveis:
 - Firefox, Thunar, clipboard, screenshots, notificações, áudio, Bluetooth
 - Neovim e dotfiles base
 - Btrfs, Snapper, UFW, Fail2ban, Lynis
+- `python-pywal` + theming dinâmico baseado no wallpaper
 
 #### `dev`
 - Tudo do `minimal`
@@ -236,6 +237,14 @@ Depois de configurado:
 - `Super+P` → Abrir rofi-rbw (procurar passwords)
 - `rbw get github.com` → Obter password (CLI)
 - `rbw generate` → Gerar password aleatória
+
+### Wallpaper + tema dinâmico
+
+O ArchDev 4.0 passa a suportar sincronização automática do tema com o wallpaper atual.
+
+- `Super+Shift+W` abre o seletor gráfico de wallpapers via `rofi`
+- no `Thunar`, o menu de contexto ganha a ação `Set as ArchDev wallpaper`
+- ao mudar wallpaper, o sistema atualiza automaticamente `waybar`, `rofi`, `kitty`, `Hyprland`, `gtk` e `qt/kvantum`
 
 ### 4. Backup de Chaves de Segurança (Importante!)
 Faça backup das tuas chaves SSH e GPG:

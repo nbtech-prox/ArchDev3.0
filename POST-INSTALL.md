@@ -76,6 +76,11 @@ archdev-rollback create pre-update-manual
 - `Super + 1-9` → Mudar workspace
 - `Super + Shift + 1-9` → Mover janela para workspace
 
+### Wallpaper dinâmico
+- `Super + Shift + W` → abrir seletor gráfico de wallpapers
+- no `Thunar`, botão direito numa imagem → `Set as ArchDev wallpaper`
+- a troca de wallpaper atualiza automaticamente o tema visual do desktop
+
 ## 5. Comandos Úteis
 
 ### Terminal (ZSH)

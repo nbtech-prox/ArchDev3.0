@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<actions>
+  <action>
+    <icon>preferences-desktop-wallpaper</icon>
+    <name>Set as ArchDev wallpaper</name>
+    <submenu></submenu>
+    <unique-id>1743180000000001-1</unique-id>
+    <command>archdev-set-wallpaper %f</command>
+    <description>Apply wallpaper and sync ArchDev theme colors</description>
+    <patterns>*.png;*.jpg;*.jpeg;*.webp;*.bmp;</patterns>
+    <image-files/>
+  </action>
+</actions>

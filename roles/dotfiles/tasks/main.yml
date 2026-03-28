@@ -86,6 +86,74 @@
     mode: '0755'
   tags: [dotfiles, config, hypr]
 
+- name: Ensure ArchDev theme directories exist
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+    mode: '0755'
+  loop:
+    - "{{ target_home }}/.config/archdev"
+    - "{{ target_home }}/.config/archdev/theme"
+    - "{{ target_home }}/.local/share/applications"
+    - "{{ target_home }}/.config/Thunar"
+  tags: [dotfiles, config, theme]
+
+- name: Ensure global ArchDev helper directory exists
+  file:
+    path: /usr/local/lib/archdev
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  become: yes
+  tags: [dotfiles, theme, wallpaper]
+
+- name: Install ArchDev theme engine
+  copy:
+    src: theme/archdev-theme-sync.py
+    dest: /usr/local/lib/archdev/archdev-theme-sync.py
+    owner: root
+    group: root
+    mode: '0755'
+  become: yes
+  tags: [dotfiles, theme, wallpaper]
+
+- name: Install ArchDev wallpaper helpers
+  copy:
+    src: "theme/{{ item }}"
+    dest: "/usr/local/bin/{{ item }}"
+    owner: root
+    group: root
+    mode: '0755'
+  loop:
+    - archdev-theme-sync
+    - archdev-set-wallpaper
+    - archdev-wallpaper-picker
+  become: yes
+  tags: [dotfiles, theme, wallpaper]
+
+- name: Install ArchDev wallpaper desktop entry
+  copy:
+    src: applications/archdev-wallpaper-picker.desktop
+    dest: "{{ target_home }}/.local/share/applications/archdev-wallpaper-picker.desktop"
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+    mode: '0644'
+  become: no
+  tags: [dotfiles, theme, wallpaper]
+
+- name: Install Thunar wallpaper custom action
+  copy:
+    src: thunar/uca.xml
+    dest: "{{ target_home }}/.config/Thunar/uca.xml"
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+    mode: '0644'
+  become: no
+  tags: [dotfiles, theme, wallpaper]
+
 - name: Copy Hyprland scripts
   copy:
     src: "{{ role_path }}/files/hypr/scripts/"
@@ -217,3 +285,14 @@
     mode: '0644'
   become: no
   tags: [dotfiles, theme]
+
+- name: Apply current wallpaper-driven theme
+  command: archdev-theme-sync
+  become: no
+  environment:
+    HOME: "{{ target_home }}"
+    XDG_CONFIG_HOME: "{{ target_home }}/.config"
+    XDG_CACHE_HOME: "{{ target_home }}/.cache"
+  changed_when: false
+  failed_when: false
+  tags: [dotfiles, theme, wallpaper]

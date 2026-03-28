@@ -71,6 +71,16 @@
   ignore_errors: yes
   tags: [desktop, wallpaper]
 
+- name: Link current wallpaper path for dynamic theme sync
+  file:
+    src: "{{ target_home }}/.config/wallpapers/wallpaper.png"
+    dest: "{{ target_home }}/.config/wallpapers/current"
+    state: link
+    force: yes
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+  tags: [desktop, wallpaper]
+
 - name: Verify wallpaper was deployed
   stat:
     path: "{{ target_home }}/.config/wallpapers/wallpaper.png"

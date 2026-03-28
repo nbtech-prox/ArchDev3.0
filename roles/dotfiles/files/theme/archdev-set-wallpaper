@@ -1,0 +1,51 @@
+#!/bin/bash
+
+set -euo pipefail
+
+WALLPAPER_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/wallpapers"
+TARGET_LINK="$WALLPAPER_DIR/current"
+
+apply_awww() {
+  local wallpaper="$1"
+
+  if ! command -v awww >/dev/null 2>&1; then
+    echo "awww não está instalado" >&2
+    return 1
+  fi
+
+  if ! pgrep -x awww-daemon >/dev/null 2>&1; then
+    awww-daemon >/dev/null 2>&1 &
+    sleep 1
+  fi
+
+  awww img "$wallpaper" --transition-type grow --transition-pos 0.9,0.9 >/dev/null 2>&1 || true
+}
+
+if [[ "${1:-}" == "--restore" ]]; then
+  if [[ -L "$TARGET_LINK" || -f "$TARGET_LINK" ]]; then
+    WALLPAPER="$TARGET_LINK"
+  else
+    WALLPAPER="$WALLPAPER_DIR/wallpaper.png"
+  fi
+else
+  WALLPAPER="${1:-}"
+fi
+
+if [[ -z "$WALLPAPER" || ! -e "$WALLPAPER" ]]; then
+  echo "Uso: archdev-set-wallpaper <imagem> | --restore" >&2
+  exit 1
+fi
+
+mkdir -p "$WALLPAPER_DIR"
+
+if [[ "${1:-}" != "--restore" ]]; then
+  EXT="${WALLPAPER##*.}"
+  TARGET_FILE="$WALLPAPER_DIR/current-wallpaper.$EXT"
+  rm -f "$WALLPAPER_DIR"/current-wallpaper.* "$TARGET_LINK"
+  cp -f "$WALLPAPER" "$TARGET_FILE"
+  ln -s "$TARGET_FILE" "$TARGET_LINK"
+  WALLPAPER="$TARGET_LINK"
+fi
+
+apply_awww "$WALLPAPER"
+exec archdev-theme-sync "$WALLPAPER"

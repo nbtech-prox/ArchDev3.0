@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=ArchDev Wallpaper Picker
+Comment=Choose a wallpaper and sync the desktop theme
+Exec=archdev-wallpaper-picker
+Icon=preferences-desktop-wallpaper
+Terminal=false
+Categories=Settings;DesktopSettings;Graphics;
