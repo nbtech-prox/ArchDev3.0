@@ -63,6 +63,15 @@ def rgba(hex_value: str, alpha: str) -> str:
     return f"rgba({hex_value.lstrip('#')}{alpha})"
 
 
+def css_rgba(hex_value: str, alpha: float) -> str:
+    r, g, b = hex_to_rgb(hex_value)
+    return f"rgba({r}, {g}, {b}, {alpha:.2f})"
+
+
+def choose_panel_background(bg_alt: str, bg: str) -> str:
+    return bg_alt if bg_alt != bg else bg
+
+
 def existing_path(*candidates: Path) -> str:
     for candidate in candidates:
         if candidate.exists():
@@ -132,6 +141,13 @@ def main():
     bg_alt = colors["color0"]
     surface = colors["color8"]
     selection = colors["color4"]
+    panel_bg = choose_panel_background(bg_alt, bg)
+    panel_edge = colors["color8"]
+    module_hover = colors["color8"]
+    ribbon_bg = css_rgba(bg, 0.72)
+    ribbon_edge = css_rgba(panel_edge, 0.75)
+    chip_bg = css_rgba(panel_bg, 0.35)
+    chip_hover = css_rgba(module_hover, 0.45)
 
     gtk_theme = f"catppuccin-mocha-{accent_name}-standard+default"
     kvantum_theme = f"catppuccin-mocha-{accent_name}"
@@ -320,34 +336,72 @@ element-text {{
 }}
 
 window#waybar {{
-  background-color: transparent;
+  background-color: {ribbon_bg};
   transition-property: background-color;
   transition-duration: .5s;
+  border-bottom: 1px solid {ribbon_edge};
+  padding: 4px 10px;
 }}
 
 window#waybar.hidden {{ opacity: 0.2; }}
 
-#workspaces {{ background-color: transparent; margin: 0 2px; padding: 0 2px; }}
-#workspaces button {{ padding: 0 8px; color: @text; border-bottom: 3px solid transparent; transition: all 0.3s ease; }}
-#workspaces button.active {{ color: @text; border-bottom: 3px solid @lavender; }}
+#workspaces {{ background-color: transparent; margin: 0 8px 0 0; padding: 0; border-radius: 999px; border: 1px solid transparent; }}
+#workspaces button {{ padding: 0 10px; min-height: 30px; color: @subtext1; border-bottom: 2px solid transparent; transition: all 0.3s ease; border-radius: 999px; margin: 0 4px; }}
+#workspaces button.active {{ color: @text; border-bottom: 2px solid @lavender; background-color: transparent; border: 1px solid transparent; }}
 #workspaces button.urgent {{ background-color: @red; color: @base; border-radius: 10px; }}
-#workspaces button:hover {{ background: @surface1; color: @text; }}
+#workspaces button:hover {{ background: {chip_hover}; color: @text; }}
 
 #clock, #cpu, #memory, #disk, #temperature, #backlight, #network, #pulseaudio, #custom-media, #tray, #mode, #idle_inhibitor, #scratchpad, #mpd, #custom-power, #custom-updates, #custom-project, #bluetooth, #custom-nightmode {{
-  padding: 0 10px;
+  padding: 0 12px;
   margin: 0 2px;
   background-color: transparent;
   color: @text;
-  font-size: 16px;
+  font-size: 15px;
+  min-height: 30px;
+  border-radius: 999px;
+  border: 1px solid transparent;
 }}
 
-#clock {{ color: @text; font-size: 14px; }}
-#cpu, #memory, #network, #pulseaudio, #bluetooth {{ color: @text; }}
-#custom-power {{ color: @red; }}
-#custom-nightmode {{ color: @text; font-size: 16px; padding: 0 12px; }}
+#clock {{ color: @rosewater; font-size: 14px; margin-right: 8px; }}
+#custom-project {{ color: @lavender; font-style: italic; padding-right: 15px; }}
+#network {{ color: @blue; }}
+#bluetooth {{ color: @sapphire; }}
+#pulseaudio {{ color: @peach; }}
+#custom-updates {{ color: @green; }}
+#custom-power {{ color: @red; min-width: 18px; }}
+#custom-nightmode {{ color: @text; font-size: 16px; padding: 0 12px; min-width: 18px; }}
 #custom-nightmode.on {{ color: @yellow; }}
-#custom-project {{ color: @text; font-style: italic; padding-right: 15px; }}
-#tray {{ padding-left: 10px; padding-right: 10px; }}
+#tray {{ padding-left: 10px; padding-right: 10px; min-width: 18px; }}
+#network,
+#bluetooth,
+#pulseaudio,
+#custom-nightmode,
+#custom-power,
+#tray {{
+  min-width: 28px;
+  min-height: 30px;
+  padding: 0 7px;
+  font-size: 14px;
+  background-color: transparent;
+  border-color: transparent;
+}}
+
+#network label,
+#bluetooth label,
+#pulseaudio label,
+#custom-nightmode label,
+#custom-power label {{
+  min-width: 14px;
+}}
+
+#tray > .passive,
+#tray > .active,
+#tray > .needs-attention {{
+  min-width: 16px;
+  min-height: 16px;
+  margin: 0 1px;
+}}
+
 #tray > .passive {{ -gtk-icon-effect: dim; }}
 #tray > .needs-attention {{ -gtk-icon-effect: highlight; }}
 #window {{ color: @text; padding: 0 15px; font-weight: normal; }}
@@ -360,8 +414,8 @@ tooltip label {{ color: @text; padding: 5px; }}
     write(
         THEME_DIR / "hypr-theme.conf",
         f"""general {{
-    col.active_border = {rgba(accent, 'ee')} {rgba(colors['color4'], 'ee')} 45deg
-    col.inactive_border = {rgba(surface, 'aa')}
+    col.active_border = {rgba(accent, 'ff')}
+    col.inactive_border = {rgba(surface, '66')}
 }}
 decoration {{
     shadow {{

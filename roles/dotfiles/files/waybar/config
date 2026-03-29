@@ -80,8 +80,8 @@
         "format": "󰂯",
         "format-disabled": "",
         "format-connected": "󰂯 {num_connections}",
-        "tooltip-format": "{controller_alias}",
-        "tooltip-format-connected": "{controller_alias}\n\n{device_enumerate}",
+        "tooltip-format": "Bluetooth",
+        "tooltip-format-connected": "Bluetooth\n{num_connections} device(s) connected",
         "tooltip-format-enumerate-connected": "{device_alias}",
         "on-click": "blueman-manager"
     },

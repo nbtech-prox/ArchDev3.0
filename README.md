@@ -245,6 +245,7 @@ O ArchDev 4.0 passa a suportar sincronização automática do tema com o wallpap
 - `Super+Shift+W` abre o seletor gráfico de wallpapers via `rofi`
 - no `Thunar`, o menu de contexto ganha a ação `Set as ArchDev wallpaper`
 - ao mudar wallpaper, o sistema atualiza automaticamente `waybar`, `rofi`, `kitty`, `Hyprland`, `gtk` e `qt/kvantum`
+- o seletor `rofi` procura wallpapers em `~/.config/wallpapers`, `~/Pictures`, `~/Downloads`, `~/Wallpapers` e `~/Imagens`
 
 ### 4. Backup de Chaves de Segurança (Importante!)
 Faça backup das tuas chaves SSH e GPG:

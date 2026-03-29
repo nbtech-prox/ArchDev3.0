@@ -3,16 +3,40 @@
 set -euo pipefail
 
 WALLPAPER_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/wallpapers"
-PICKER_DIR="${XDG_PICTURES_DIR:-$HOME/Pictures}"
+PICTURES_DIR="${XDG_PICTURES_DIR:-$HOME/Pictures}"
 
-mapfile -t WALLPAPERS < <(find "$WALLPAPER_DIR" "$PICKER_DIR" -maxdepth 2 -type f \( -iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.webp' \) 2>/dev/null | sort -u)
+SEARCH_DIRS=(
+  "$WALLPAPER_DIR"
+  "$PICTURES_DIR"
+  "$HOME/Downloads"
+  "$HOME/Wallpapers"
+  "$HOME/Imagens"
+)
+
+EXTRA_DIRS="${ARCHDEV_WALLPAPER_DIRS:-}"
+if [[ -n "$EXTRA_DIRS" ]]; then
+  IFS=':' read -r -a USER_DIRS <<< "$EXTRA_DIRS"
+  SEARCH_DIRS+=("${USER_DIRS[@]}")
+fi
+
+VALID_DIRS=()
+for dir in "${SEARCH_DIRS[@]}"; do
+  [[ -d "$dir" ]] && VALID_DIRS+=("$dir")
+done
+
+if [[ ${#VALID_DIRS[@]} -eq 0 ]]; then
+  echo "Nenhum diretório de wallpapers encontrado." >&2
+  exit 1
+fi
+
+mapfile -t WALLPAPERS < <(find "${VALID_DIRS[@]}" -maxdepth 3 -type f \( -iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.webp' -o -iname '*.bmp' \) 2>/dev/null | sort -u)
 
 if [[ ${#WALLPAPERS[@]} -eq 0 ]]; then
   echo "Nenhum wallpaper encontrado." >&2
   exit 1
 fi
 
-CHOICE="$(printf '%s
+CHOICE="$(printf '%s\n' "${WALLPAPERS[@]}" | rofi -dmenu -i -p 'Wallpaper' -theme-str 'window {width: 900px;} listview {lines: 12;}')"
 
 if [[ -n "$CHOICE" ]]; then
   exec archdev-set-wallpaper "$CHOICE"

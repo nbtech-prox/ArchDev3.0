@@ -145,6 +145,26 @@
   when: archdev_graphics_mode | default('generic') not in ['vmware', 'virtualbox', 'kvm']
   tags: [desktop, gpu]
 
+- name: Install ArchDev Hyprland session wrapper
+  copy:
+    src: archdev-start-hyprland
+    dest: /usr/local/bin/archdev-start-hyprland
+    owner: root
+    group: root
+    mode: '0755'
+  become: yes
+  tags: [desktop, sddm, hypr]
+
+- name: Override Hyprland Wayland session to use ArchDev wrapper
+  copy:
+    src: hyprland.desktop
+    dest: /usr/share/wayland-sessions/hyprland.desktop
+    owner: root
+    group: root
+    mode: '0644'
+  become: yes
+  tags: [desktop, sddm, hypr]
+
 # NOTA: Firefox profile e user.js configurados em assets.yml
 
 - include_tasks: assets.yml
