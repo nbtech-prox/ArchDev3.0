@@ -16,6 +16,7 @@ Use it as the "wiki" for deeper reading, while the root `README.md` stays focuse
 - `migration-4.0.md` - migration phases and current status
 - `doctor-4.0.md` - how validation works in the new flow
 - `wrapper-4.0.md` - operational guide for `profiles`, `status`, `doctor`, `apply`, and `rollback`
+- `real-machine-apply.md` - short pre-flight and apply checklist for real workstations
 
 ## Recommended Reading Order
 
@@ -28,6 +29,7 @@ Use it as the "wiki" for deeper reading, while the root `README.md` stays focuse
 2. `profiles-4.0.md`
 3. `doctor-4.0.md`
 4. `migration-4.0.md`
+5. `real-machine-apply.md`
 
 ### Maintaining or extending the repo
 1. `architecture-4.0.md`
@@ -64,6 +66,10 @@ If you enable the repository Wiki tab, use this page map:
   - migration status
 - `Doctor`
   - profile-aware validation model
+- `Real-Machine-Apply`
+  - pre-flight checks
+  - apply order
+  - rollback notes
 - `Rollback`
   - `archdev-rollback`
   - `snapper` workflow

@@ -146,6 +146,7 @@ Detailed documentation lives in `docs/`:
 - `docs/migration-4.0.md`
 - `docs/doctor-4.0.md`
 - `docs/wrapper-4.0.md`
+- `docs/real-machine-apply.md`
 - `POST-INSTALL.md`
 
 Suggested Wiki pages:
@@ -155,6 +156,7 @@ Suggested Wiki pages:
 - `Profiles`
 - `ArchDev-4.0`
 - `Doctor`
+- `Real-Machine-Apply`
 - `Rollback`
 - `Dynamic-Wallpaper-Theming`
 - `Post-Install`
