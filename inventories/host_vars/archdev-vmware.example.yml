@@ -9,3 +9,11 @@ archdev_enable_zram: false
 archdev_enable_wlsunset: false
 archdev_sddm_theme: "catppuccin-auto"
 archdev_target_ram_mb: 4096
+
+# Em VM, manter tuning PostgreSQL conservador se precisares de overrides locais
+# archdev_postgresql_shared_buffers: "256MB"
+# archdev_postgresql_effective_cache_size: "768MB"
+# archdev_postgresql_work_mem: "8MB"
+# archdev_postgresql_maintenance_work_mem: "256MB"
+# archdev_postgresql_wal_buffers: "8MB"
+# archdev_postgresql_max_connections: 100

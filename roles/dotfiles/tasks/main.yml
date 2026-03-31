@@ -25,27 +25,6 @@
     mode: '0755'
   tags: [dotfiles, setup]
 
-# --- GPU Detection for Hyprland ---
-- name: Detect GPU vendor
-  shell: |
-    if lspci | grep -i 'vga\|3d\|display' | grep -qi 'amd\|ati\|radeon'; then
-      echo "amd"
-    elif lspci | grep -i 'vga\|3d\|display' | grep -qi 'intel'; then
-      echo "intel"
-    elif lspci | grep -i 'vga\|3d\|display' | grep -qi 'nvidia'; then
-      echo "nvidia"
-    else
-      echo "generic"
-    fi
-  register: gpu_detect
-  changed_when: false
-  tags: [dotfiles, config, hypr]
-
-- name: Set GPU vendor fact
-  set_fact:
-    gpu_vendor: "{{ gpu_detect.stdout }}"
-  tags: [dotfiles, config, hypr]
-
 # --- Hyprland Config (Template with GPU detection) ---
 - name: Ensure Hypr directory exists
   file:
@@ -164,6 +143,15 @@
     directory_mode: '0755'
   tags: [dotfiles, config, hypr]
 
+- name: Template Night Mode script with host-aware coordinates
+  template:
+    src: hypr/night-mode.sh.j2
+    dest: "{{ target_home }}/.config/hypr/scripts/night-mode.sh"
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+    mode: '0755'
+  tags: [dotfiles, config, hypr]
+
 # --- Other Configs ---
 - name: Copy Configuration Directories (Waybar, Kitty, etc.)
   copy:
@@ -200,6 +188,15 @@
     mode: '0755'
     owner: "{{ target_user }}"
     group: "{{ target_user }}"
+  tags: [dotfiles, config]
+
+- name: Template Waybar config with optional host-specific output
+  template:
+    src: waybar/config.j2
+    dest: "{{ target_home }}/.config/waybar/config"
+    owner: "{{ target_user }}"
+    group: "{{ target_user }}"
+    mode: '0644'
   tags: [dotfiles, config]
 
 - name: Copy Zsh Configuration

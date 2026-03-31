@@ -13,6 +13,8 @@
       - "{{ playbook_dir }}/../inventories/group_vars/features/postgresql.yml"
       - "{{ playbook_dir }}/../inventories/group_vars/features/docker.yml"
       - "{{ playbook_dir }}/../inventories/group_vars/features/opencode.yml"
+      - "{{ playbook_dir }}/../inventories/group_vars/features/redis.yml"
+      - "{{ playbook_dir }}/../inventories/group_vars/features/dbeaver.yml"
 
   pre_tasks:
     - name: Validate selected declarative profile

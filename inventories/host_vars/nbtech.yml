@@ -1,0 +1,45 @@
+---
+# Base segura para a workstation real 'nbtech'.
+# Ajustar depois os valores comentados quando confirmares os paths DRM e as coordenadas reais.
+
+archdev_detected_hostname: "nbtech"
+archdev_hardware_type: "baremetal"
+archdev_cpu_vendor: "amd"
+archdev_graphics_mode: "amd"
+
+archdev_enable_gpu_overrides: true
+archdev_sddm_theme: "catppuccin-auto"
+archdev_hyprland_monitors:
+  - "HDMI-A-1,1920x1080@74.97,0x0,1"
+  - "DP-3,1920x1080@100.09,1920x0,1"
+archdev_waybar_output: "HDMI-A-1"
+archdev_hyprland_workspace_rules:
+  - "1,monitor:HDMI-A-1,default:true"
+  - "2,monitor:HDMI-A-1"
+  - "3,monitor:DP-3"
+  - "4,monitor:DP-3"
+  - "5,monitor:DP-3"
+  - "6,monitor:DP-3"
+  - "7,monitor:DP-3"
+  - "8,monitor:DP-3"
+  - "9,monitor:DP-3"
+  - "10,monitor:DP-3"
+
+# 64 GB classe de RAM; seguro para os defaults host-aware atuais
+archdev_target_ram_mb: 65536
+archdev_enable_zram: true
+
+archdev_enable_wlsunset: true
+
+primary_gpu_drm_path: "/dev/dri/by-path/pci-0000:03:00.0-card"
+secondary_gpu_drm_path: "/dev/dri/by-path/pci-0000:7b:00.0-card"
+wlsunset_latitude: "38.7566"
+wlsunset_longitude: "-9.2545"
+
+# Overrides opcionais de tuning PostgreSQL
+# archdev_postgresql_shared_buffers: "4GB"
+# archdev_postgresql_effective_cache_size: "12GB"
+# archdev_postgresql_work_mem: "32MB"
+# archdev_postgresql_maintenance_work_mem: "1GB"
+# archdev_postgresql_wal_buffers: "32MB"
+# archdev_postgresql_max_connections: 200

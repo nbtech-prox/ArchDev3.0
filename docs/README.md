@@ -15,6 +15,7 @@ Use it as the "wiki" for deeper reading, while the root `README.md` stays focuse
 - `profiles-4.0.md` - profile model and hardware-aware flow
 - `migration-4.0.md` - migration phases and current status
 - `doctor-4.0.md` - how validation works in the new flow
+- `wrapper-4.0.md` - operational guide for `profiles`, `status`, `doctor`, `apply`, and `rollback`
 
 ## Recommended Reading Order
 

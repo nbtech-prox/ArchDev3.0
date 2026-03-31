@@ -85,7 +85,6 @@ packages_dev_tools_full:
   - yq
   - terraform
   - lazydocker
-  - redis
   - chromium
   - tmux
   - just
@@ -93,7 +92,6 @@ packages_dev_tools_full:
   - yamllint
   - ansible-lint
   - pgcli
-  - dbeaver
 
 packages_dev_web:
   - php
@@ -193,11 +191,33 @@ archdev_enable_wlsunset: true
 archdev_sddm_theme: "catppuccin-auto"
 primary_gpu_drm_path: ""
 secondary_gpu_drm_path: ""
+archdev_hyprland_monitors:
+  - ",preferred,auto,1"
+archdev_hyprland_workspace_rules: []
+archdev_waybar_output: ""
 
 # --- Hardware alvo ---
 # Defaults globais. Afinar por máquina em inventories/host_vars/<hostname>.yml
 archdev_target_ram_mb: 65536
 archdev_enable_zram: true
+
+# --- PostgreSQL 4.0 ---
+# Defaults seguros e sobreponíveis por máquina em inventories/host_vars/<hostname>.yml
+archdev_postgresql_shared_buffers: >-
+  {{ '4GB' if (archdev_target_ram_mb | int) >= 32768 else '2GB' if (archdev_target_ram_mb | int) >= 16384 else '1GB' if (archdev_target_ram_mb | int) >= 8192 else '256MB' }}
+archdev_postgresql_effective_cache_size: >-
+  {{ '12GB' if (archdev_target_ram_mb | int) >= 32768 else '6GB' if (archdev_target_ram_mb | int) >= 16384 else '3GB' if (archdev_target_ram_mb | int) >= 8192 else '768MB' }}
+archdev_postgresql_work_mem: >-
+  {{ '32MB' if (archdev_target_ram_mb | int) >= 32768 else '16MB' if (archdev_target_ram_mb | int) >= 16384 else '8MB' }}
+archdev_postgresql_maintenance_work_mem: >-
+  {{ '1GB' if (archdev_target_ram_mb | int) >= 32768 else '512MB' if (archdev_target_ram_mb | int) >= 16384 else '256MB' }}
+archdev_postgresql_wal_buffers: >-
+  {{ '32MB' if (archdev_target_ram_mb | int) >= 32768 else '16MB' if (archdev_target_ram_mb | int) >= 16384 else '8MB' }}
+archdev_postgresql_effective_io_concurrency: 256
+archdev_postgresql_random_page_cost: '1.1'
+archdev_postgresql_default_statistics_target: 200
+archdev_postgresql_max_connections: >-
+  {{ 200 if (archdev_target_ram_mb | int) >= 32768 else 150 if (archdev_target_ram_mb | int) >= 16384 else 100 }}
 
 # --- Night Mode (wlsunset) ---
 # Defaults globais. Afinar por máquina em inventories/host_vars/<hostname>.yml

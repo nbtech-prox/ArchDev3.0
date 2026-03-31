@@ -54,3 +54,19 @@ Isto separa claramente:
 
 - `perfil` = o que instalar
 - `host_vars` = como adaptar a instalação à máquina real
+
+## Inspeção segura antes do apply
+
+Antes de aplicar um perfil, o fluxo mais seguro é:
+
+```bash
+scripts/archdev profiles
+scripts/archdev explain dev
+scripts/archdev status
+```
+
+Isto permite confirmar:
+
+- se o perfil existe mesmo no repositório
+- quais `feature_*` esse perfil ativa
+- que `host_vars` o wrapper espera usar no host atual

@@ -47,9 +47,19 @@ scripts/archdev init
 scripts/archdev apply minimal
 scripts/archdev apply dev
 scripts/archdev apply full
+scripts/archdev profiles
 scripts/archdev status
 scripts/archdev doctor
 ```
+
+`status` deve ser o primeiro comando de inspeção do wrapper 4.0:
+
+- mostra o host detetado
+- mostra o caminho esperado de `host_vars`
+- mostra o perfil efectivo conhecido pelo wrapper
+- lista os perfis declarativos disponíveis em `inventories/group_vars/profiles/`
+
+`profiles` complementa esse fluxo e lista diretamente os perfis declarativos disponíveis a partir dos ficheiros reais do repositório.
 
 ## Estrutura proposta
 

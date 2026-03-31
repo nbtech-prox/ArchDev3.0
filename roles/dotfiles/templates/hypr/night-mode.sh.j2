@@ -5,11 +5,13 @@
 PID=$(pgrep -x wlsunset)
 
 if [ -n "$PID" ]; then
-    # Está ligado, desligar
-    kill $PID
+    kill "$PID"
     dunstify -a "Night Mode" -u normal "☀️ Modo Dia ativado" "Filtro de luz azul desligado"
 else
-    # Está desligado, ligar
-    wlsunset -l 38.7 -L -9.1 &
+    {% if archdev_enable_wlsunset | default(true) | bool %}
+    wlsunset -l {{ wlsunset_latitude | default('38.7') }} -L {{ wlsunset_longitude | default('-9.1') }} &
     dunstify -a "Night Mode" -u normal "🌙 Modo Auto retomado" "Filtro dinâmico sincronizado com o pôr-do-sol"
+    {% else %}
+    dunstify -a "Night Mode" -u low "Night Mode desativado" "Ative archdev_enable_wlsunset no host_vars para usar modo automático"
+    {% endif %}
 fi

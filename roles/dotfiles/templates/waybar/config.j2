@@ -1,6 +1,9 @@
 {
     "layer": "top",
     "position": "top",
+{% if archdev_waybar_output | default('') | length > 0 %}
+    "output": "{{ archdev_waybar_output }}",
+{% endif %}
     "mod": "dock",
     "exclusive": true,
     "passthrough": false,

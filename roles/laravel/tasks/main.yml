@@ -29,3 +29,12 @@
     HOME: "{{ target_home }}"
     COMPOSER_HOME: "{{ target_home }}/.config/composer"
   tags: [dev, tools, laravel]
+
+- name: Create symlink for Laravel installer
+  file:
+    src: "{{ target_home }}/.config/composer/vendor/bin/laravel"
+    dest: /usr/local/bin/laravel
+    state: link
+    force: yes
+  become: yes
+  tags: [dev, tools, laravel]

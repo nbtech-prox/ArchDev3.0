@@ -74,9 +74,18 @@ scripts/archdev init
 scripts/archdev apply minimal
 scripts/archdev apply dev
 scripts/archdev apply full
+scripts/archdev explain full
+scripts/archdev profiles
 scripts/archdev status
 scripts/archdev doctor
 ```
+
+`scripts/archdev status` is the safest way to inspect the 4.0 wrapper state before an apply.
+It shows the detected host, the expected `inventories/host_vars/<hostname>.yml`, the effective profile context, and the declarative profiles currently available under `inventories/group_vars/profiles/`.
+
+`scripts/archdev explain <perfil>` gives a read-only preview of what the wrapper will use for that profile: profile file, feature flags, feature files, and current host context.
+
+`scripts/archdev profiles` gives a direct file-backed view of the declarative profiles known by the wrapper.
 
 What is already true in the 4.0 flow:
 
@@ -136,6 +145,7 @@ Detailed documentation lives in `docs/`:
 - `docs/profiles-4.0.md`
 - `docs/migration-4.0.md`
 - `docs/doctor-4.0.md`
+- `docs/wrapper-4.0.md`
 - `POST-INSTALL.md`
 
 Suggested Wiki pages:

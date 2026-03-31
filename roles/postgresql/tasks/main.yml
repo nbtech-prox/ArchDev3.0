@@ -37,15 +37,15 @@
     regexp: '^#?{{ item.key }}\s*=.*'
     line: "{{ item.key }} = {{ item.value }}"
   loop:
-    - { key: shared_buffers, value: "'8GB'" }
-    - { key: effective_cache_size, value: "'24GB'" }
-    - { key: work_mem, value: "'32MB'" }
-    - { key: maintenance_work_mem, value: "'1GB'" }
-    - { key: wal_buffers, value: "'32MB'" }
-    - { key: effective_io_concurrency, value: '256' }
-    - { key: random_page_cost, value: '1.1' }
-    - { key: default_statistics_target, value: '200' }
-    - { key: max_connections, value: '200' }
+    - { key: shared_buffers, value: "'{{ archdev_postgresql_shared_buffers }}'" }
+    - { key: effective_cache_size, value: "'{{ archdev_postgresql_effective_cache_size }}'" }
+    - { key: work_mem, value: "'{{ archdev_postgresql_work_mem }}'" }
+    - { key: maintenance_work_mem, value: "'{{ archdev_postgresql_maintenance_work_mem }}'" }
+    - { key: wal_buffers, value: "'{{ archdev_postgresql_wal_buffers }}'" }
+    - { key: effective_io_concurrency, value: '{{ archdev_postgresql_effective_io_concurrency }}' }
+    - { key: random_page_cost, value: '{{ archdev_postgresql_random_page_cost }}' }
+    - { key: default_statistics_target, value: '{{ archdev_postgresql_default_statistics_target }}' }
+    - { key: max_connections, value: '{{ archdev_postgresql_max_connections }}' }
   notify: Restart PostgreSQL
   tags: [dev, postgresql]
 

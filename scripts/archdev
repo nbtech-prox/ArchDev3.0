@@ -7,9 +7,65 @@ PROFILE="${ARCHDEV_PROFILE:-full}"
 PASS_FILE=""
 STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/archdev"
 LAST_APPLY_FILE="$STATE_DIR/last-apply.env"
+PROFILES_DIR="$ROOT_DIR/inventories/group_vars/profiles"
+FEATURES_DIR="$ROOT_DIR/inventories/group_vars/features"
 HOST_VARS_DIR="$ROOT_DIR/inventories/host_vars"
 HOST_NAME="$( (command -v hostname >/dev/null 2>&1 && hostname -s) || uname -n )"
 HOST_VARS_FILE="$HOST_VARS_DIR/${HOST_NAME}.yml"
+FEATURE_FILES=(
+  "$FEATURES_DIR/desktop.yml"
+  "$FEATURES_DIR/laravel.yml"
+  "$FEATURES_DIR/postgresql.yml"
+  "$FEATURES_DIR/docker.yml"
+  "$FEATURES_DIR/opencode.yml"
+  "$FEATURES_DIR/redis.yml"
+  "$FEATURES_DIR/dbeaver.yml"
+)
+
+profile_file_path() {
+  local profile="$1"
+  echo "$PROFILES_DIR/${profile}.yml"
+}
+
+list_profiles() {
+  local profile_file
+  local profile_name
+  local first="true"
+
+  if [[ ! -d "$PROFILES_DIR" ]]; then
+    return 1
+  fi
+
+  for profile_file in "$PROFILES_DIR"/*.yml; do
+    [[ -e "$profile_file" ]] || continue
+    profile_name="$(basename "$profile_file" .yml)"
+    if [[ "$first" == "true" ]]; then
+      printf '%s' "$profile_name"
+      first="false"
+    else
+      printf ', %s' "$profile_name"
+    fi
+  done
+}
+
+is_valid_profile() {
+  local profile="$1"
+  [[ -f "$(profile_file_path "$profile")" ]]
+}
+
+validate_profile() {
+  local profile="$1"
+  local available_profiles=""
+
+  if ! is_valid_profile "$profile"; then
+    available_profiles="$(list_profiles || true)"
+    echo "❌ Perfil inválido: $profile"
+    if [[ -n "$available_profiles" ]]; then
+      echo "Use um dos perfis declarativos disponíveis: $available_profiles"
+    fi
+    exit 1
+  fi
+}
 
 usage() {
   cat <<'EOF'
@@ -18,6 +74,8 @@ ArchDev command wrapper
 Uso:
   scripts/archdev init
   scripts/archdev apply [minimal|dev|full]
+  scripts/archdev explain [minimal|dev|full]
+  scripts/archdev profiles
   scripts/archdev status
   scripts/archdev doctor
   scripts/archdev rollback list
@@ -26,6 +84,8 @@ Uso:
 Comandos:
   init     Instala dependências mínimas (git e ansible)
   apply    Deteta hardware, confirma host_vars e aplica um perfil
+  explain  Mostra o contexto que o wrapper usará para um perfil
+  profiles Lista os perfis declarativos disponíveis
   status   Mostra informação básica do ambiente actual
   doctor   Corre verificações pós-instalação
   rollback Lista snapshots ou faz rollback para um snapshot
@@ -78,11 +138,42 @@ read_host_var() {
   echo "$value"
 }
 
+load_profile_feature_context() {
+  local profile_file=""
+
+  ARCHDEV_FEATURE_DESKTOP="false"
+  ARCHDEV_FEATURE_DEV="false"
+  ARCHDEV_FEATURE_FULL="false"
+  ARCHDEV_FEATURE_LARAVEL="false"
+  ARCHDEV_FEATURE_POSTGRESQL="false"
+  ARCHDEV_FEATURE_DOCKER="false"
+  ARCHDEV_FEATURE_OPENCODE="false"
+  ARCHDEV_FEATURE_REDIS="false"
+  ARCHDEV_FEATURE_DBEAVER="false"
+
+  if ! is_valid_profile "$ARCHDEV_DOCTOR_PROFILE"; then
+    return 0
+  fi
+
+  profile_file="$(profile_file_path "$ARCHDEV_DOCTOR_PROFILE")"
+  ARCHDEV_FEATURE_DESKTOP="$(normalize_bool "$(read_host_var feature_desktop "$profile_file" || printf '%s' 'false')")"
+  ARCHDEV_FEATURE_DEV="$(normalize_bool "$(read_host_var feature_dev "$profile_file" || printf '%s' 'false')")"
+  ARCHDEV_FEATURE_FULL="$(normalize_bool "$(read_host_var feature_full "$profile_file" || printf '%s' 'false')")"
+  ARCHDEV_FEATURE_LARAVEL="$(normalize_bool "$(read_host_var feature_laravel "$profile_file" || printf '%s' 'false')")"
+  ARCHDEV_FEATURE_POSTGRESQL="$(normalize_bool "$(read_host_var feature_postgresql "$profile_file" || printf '%s' 'false')")"
+  ARCHDEV_FEATURE_DOCKER="$(normalize_bool "$(read_host_var feature_docker "$profile_file" || printf '%s' 'false')")"
+  ARCHDEV_FEATURE_OPENCODE="$(normalize_bool "$(read_host_var feature_opencode "$profile_file" || printf '%s' 'false')")"
+  ARCHDEV_FEATURE_REDIS="$(normalize_bool "$(read_host_var feature_redis "$profile_file" || printf '%s' 'false')")"
+  ARCHDEV_FEATURE_DBEAVER="$(normalize_bool "$(read_host_var feature_dbeaver "$profile_file" || printf '%s' 'false')")"
+}
+
 load_runtime_context() {
   ARCHDEV_DOCTOR_PROFILE="${ARCHDEV_PROFILE:-$PROFILE}"
   ARCHDEV_DOCTOR_HARDWARE_TYPE="baremetal"
   ARCHDEV_DOCTOR_GRAPHICS_MODE="generic"
   ARCHDEV_DOCTOR_ENABLE_GPU_OVERRIDES="false"
+  ARCHDEV_DOCTOR_ENABLE_ZRAM="false"
+  ARCHDEV_DOCTOR_ENABLE_WLSUNSET="false"
 
   if [[ -f "$LAST_APPLY_FILE" ]]; then
     # shellcheck disable=SC1090
@@ -90,10 +181,14 @@ load_runtime_context() {
     ARCHDEV_DOCTOR_PROFILE="${ARCHDEV_LAST_PROFILE:-$ARCHDEV_DOCTOR_PROFILE}"
   fi
 
+  load_profile_feature_context
+
   if [[ -f "$HOST_VARS_FILE" ]]; then
     ARCHDEV_DOCTOR_HARDWARE_TYPE="$(read_host_var archdev_hardware_type "$HOST_VARS_FILE" || printf '%s' "$ARCHDEV_DOCTOR_HARDWARE_TYPE")"
     ARCHDEV_DOCTOR_GRAPHICS_MODE="$(read_host_var archdev_graphics_mode "$HOST_VARS_FILE" || printf '%s' "$ARCHDEV_DOCTOR_GRAPHICS_MODE")"
     ARCHDEV_DOCTOR_ENABLE_GPU_OVERRIDES="$(read_host_var archdev_enable_gpu_overrides "$HOST_VARS_FILE" || printf '%s' "$ARCHDEV_DOCTOR_ENABLE_GPU_OVERRIDES")"
+    ARCHDEV_DOCTOR_ENABLE_ZRAM="$(read_host_var archdev_enable_zram "$HOST_VARS_FILE" || printf '%s' "$ARCHDEV_DOCTOR_ENABLE_ZRAM")"
+    ARCHDEV_DOCTOR_ENABLE_WLSUNSET="$(read_host_var archdev_enable_wlsunset "$HOST_VARS_FILE" || printf '%s' "$ARCHDEV_DOCTOR_ENABLE_WLSUNSET")"
   fi
 }
 
@@ -197,6 +292,14 @@ default_wlsunset() {
   fi
 }
 
+default_wlsunset_latitude() {
+  echo "38.7"
+}
+
+default_wlsunset_longitude() {
+  echo "-9.1"
+}
+
 prompt_with_default() {
   local prompt_text="$1"
   local default_value="$2"
@@ -237,6 +340,7 @@ configure_hardware_profile() {
   local virt_type cpu_vendor memory_mb graphics_mode
   local enable_gpu_overrides enable_zram enable_wlsunset sddm_theme
   local primary_drm_path secondary_drm_path use_detected answer
+  local wlsunset_latitude wlsunset_longitude
 
   ensure_host_vars_dir
 
@@ -247,6 +351,8 @@ configure_hardware_profile() {
   enable_gpu_overrides="$(default_gpu_overrides "$graphics_mode")"
   enable_zram="$(default_zram "$memory_mb")"
   enable_wlsunset="$(default_wlsunset "$virt_type")"
+  wlsunset_latitude="$(default_wlsunset_latitude)"
+  wlsunset_longitude="$(default_wlsunset_longitude)"
   sddm_theme="catppuccin-auto"
   primary_drm_path="$(detect_drm_path_by_index 1)"
   secondary_drm_path="$(detect_drm_path_by_index 2)"
@@ -260,6 +366,10 @@ configure_hardware_profile() {
   echo "- GPU overrides: $enable_gpu_overrides"
   echo "- ZRAM: $enable_zram"
   echo "- Wlsunset: $enable_wlsunset"
+  if [[ "$enable_wlsunset" == "true" ]]; then
+    echo "- Latitude: $wlsunset_latitude"
+    echo "- Longitude: $wlsunset_longitude"
+  fi
   echo "- Tema SDDM: $sddm_theme"
 
   if [[ "$enable_gpu_overrides" == "true" ]]; then
@@ -281,6 +391,10 @@ configure_hardware_profile() {
     enable_gpu_overrides="$(normalize_bool "$(prompt_with_default "Ativar overrides de GPU? (true/false)" "$enable_gpu_overrides")")"
     enable_zram="$(normalize_bool "$(prompt_with_default "Ativar zram? (true/false)" "$enable_zram")")"
     enable_wlsunset="$(normalize_bool "$(prompt_with_default "Ativar wlsunset? (true/false)" "$enable_wlsunset")")"
+    if [[ "$enable_wlsunset" == "true" ]]; then
+      wlsunset_latitude="$(prompt_with_default "Latitude do wlsunset" "$wlsunset_latitude")"
+      wlsunset_longitude="$(prompt_with_default "Longitude do wlsunset" "$wlsunset_longitude")"
+    fi
     sddm_theme="$(prompt_with_default "Tema SDDM (default ou nome do tema)" "$sddm_theme")"
     if [[ "$enable_gpu_overrides" == "true" ]]; then
       primary_drm_path="$(prompt_with_default "DRM primário" "${primary_drm_path:-/dev/dri/by-path/SEU-DRM-PRIMARIO-card}")"
@@ -300,6 +414,13 @@ archdev_enable_zram: $enable_zram
 archdev_enable_wlsunset: $enable_wlsunset
 archdev_sddm_theme: "$sddm_theme"
 EOF
+
+  if [[ "$enable_wlsunset" == "true" ]]; then
+    cat >> "$HOST_VARS_FILE" <<EOF
+wlsunset_latitude: "$wlsunset_latitude"
+wlsunset_longitude: "$wlsunset_longitude"
+EOF
+  fi
 
   if [[ "$enable_gpu_overrides" == "true" ]]; then
     cat >> "$HOST_VARS_FILE" <<EOF
@@ -400,6 +521,8 @@ cmd_apply() {
   local apply_rc=0
   local doctor_rc=0
 
+  validate_profile "$profile"
+
   capture_sudo_password
   trap cleanup EXIT INT TERM
   configure_hardware_profile
@@ -438,10 +561,43 @@ cmd_apply() {
 }
 
 cmd_status() {
+  local effective_profile="$PROFILE"
+  local available_profiles=""
+
+  load_runtime_context
+  available_profiles="$(list_profiles || true)"
+
   echo "ArchDev status"
   echo "============="
   echo "Repo: $ROOT_DIR"
   echo "Perfil por omissão: $PROFILE"
+  echo "Host detectado: $HOST_NAME"
+  echo "Host vars esperado: $HOST_VARS_FILE"
+
+  if [[ -f "$LAST_APPLY_FILE" ]]; then
+    effective_profile="$ARCHDEV_DOCTOR_PROFILE"
+  fi
+
+  echo "Perfil efectivo: $effective_profile"
+  if [[ -n "$available_profiles" ]]; then
+    echo "Perfis declarativos: $available_profiles"
+  fi
+  echo "Hardware: $ARCHDEV_DOCTOR_HARDWARE_TYPE"
+  echo "Gráficos: $ARCHDEV_DOCTOR_GRAPHICS_MODE"
+  echo "GPU overrides: $ARCHDEV_DOCTOR_ENABLE_GPU_OVERRIDES"
+  echo "ZRAM: $ARCHDEV_DOCTOR_ENABLE_ZRAM"
+  echo "Wlsunset: $ARCHDEV_DOCTOR_ENABLE_WLSUNSET"
+  if [[ "$ARCHDEV_DOCTOR_ENABLE_WLSUNSET" == "true" ]]; then
+    echo "Latitude: $(read_host_var wlsunset_latitude "$HOST_VARS_FILE" || printf '%s' "${wlsunset_latitude:-38.7}")"
+    echo "Longitude: $(read_host_var wlsunset_longitude "$HOST_VARS_FILE" || printf '%s' "${wlsunset_longitude:--9.1}")"
+  fi
+
+  if [[ -f "$HOST_VARS_FILE" ]]; then
+    echo "Host vars: presente"
+  else
+    echo "Host vars: ausente"
+  fi
+
   echo ""
   echo "Ferramentas:"
   for cmd in ansible docker psql opencode laravel git; do
@@ -464,7 +620,101 @@ cmd_status() {
   if [[ -f "$LAST_APPLY_FILE" ]]; then
     echo ""
     echo "Último apply:"
-    cat "$LAST_APPLY_FILE"
+    echo "  - perfil: ${ARCHDEV_LAST_PROFILE:-desconhecido}"
+    echo "  - timestamp: ${ARCHDEV_LAST_APPLY_TS:-desconhecido}"
+    if [[ -n "${ARCHDEV_PRE_SNAPSHOT:-}" ]]; then
+      echo "  - snapshot pre: ${ARCHDEV_PRE_SNAPSHOT}"
+    fi
+    if [[ -n "${ARCHDEV_POST_SNAPSHOT:-}" ]]; then
+      echo "  - snapshot post: ${ARCHDEV_POST_SNAPSHOT}"
+    fi
+  fi
+}
+
+cmd_profiles() {
+  local profile_file
+  local profile_name
+
+  echo "Perfis declarativos"
+  echo "===================="
+
+  if [[ ! -d "$PROFILES_DIR" ]]; then
+    echo "❌ Diretório de perfis não encontrado: $PROFILES_DIR"
+    exit 1
+  fi
+
+  for profile_file in "$PROFILES_DIR"/*.yml; do
+    [[ -e "$profile_file" ]] || continue
+    profile_name="$(basename "$profile_file" .yml)"
+    echo "- $profile_name ($profile_file)"
+  done
+}
+
+cmd_explain() {
+  local profile="${1:-$PROFILE}"
+  local profile_file=""
+  local feature_name=""
+  local feature_value=""
+  local feature_file=""
+  local profile_label=""
+  local feature_keys=(
+    feature_desktop
+    feature_dev
+    feature_full
+    feature_laravel
+    feature_postgresql
+    feature_docker
+    feature_opencode
+    feature_redis
+    feature_dbeaver
+  )
+
+  validate_profile "$profile"
+  load_runtime_context
+  profile_file="$(profile_file_path "$profile")"
+  profile_label="$(read_host_var archdev_profile_name "$profile_file" || printf '%s' "$profile")"
+
+  echo "Contexto do wrapper 4.0"
+  echo "========================"
+  echo "Perfil pedido: $profile"
+  echo "Perfil resolvido: $profile_label"
+  echo "Ficheiro do perfil: $profile_file"
+  echo "Host detetado: $HOST_NAME"
+  echo "Host vars esperado: $HOST_VARS_FILE"
+
+  if [[ -f "$HOST_VARS_FILE" ]]; then
+    echo "Host vars actual: presente"
+  else
+    echo "Host vars actual: ausente"
+  fi
+
+  echo ""
+  echo "Features do perfil:"
+  for feature_name in "${feature_keys[@]}"; do
+    feature_value="$(read_host_var "$feature_name" "$profile_file" || printf '%s' 'false')"
+    echo "  - $feature_name: $feature_value"
+  done
+
+  echo ""
+  echo "Feature files carregados por site-4.yml:"
+  for feature_file in "${FEATURE_FILES[@]}"; do
+    if [[ -f "$feature_file" ]]; then
+      echo "  - ok: $feature_file"
+    else
+      echo "  - ausente: $feature_file"
+    fi
+  done
+
+  echo ""
+  echo "Contexto local conhecido pelo wrapper:"
+  echo "  - hardware: $ARCHDEV_DOCTOR_HARDWARE_TYPE"
+  echo "  - gráficos: $ARCHDEV_DOCTOR_GRAPHICS_MODE"
+  echo "  - gpu overrides: $ARCHDEV_DOCTOR_ENABLE_GPU_OVERRIDES"
+  echo "  - zram: $ARCHDEV_DOCTOR_ENABLE_ZRAM"
+  echo "  - wlsunset: $ARCHDEV_DOCTOR_ENABLE_WLSUNSET"
+  if [[ "$ARCHDEV_DOCTOR_ENABLE_WLSUNSET" == "true" ]]; then
+    echo "  - latitude: $(read_host_var wlsunset_latitude "$HOST_VARS_FILE" || printf '%s' '38.7')"
+    echo "  - longitude: $(read_host_var wlsunset_longitude "$HOST_VARS_FILE" || printf '%s' '-9.1')"
   fi
 }
 
@@ -501,12 +751,22 @@ cmd_doctor() {
     warnings=$((warnings + 1))
   }
 
+  requirement_from_flag() {
+    local flag_value="${1:-false}"
+
+    if [[ "$flag_value" == "true" ]]; then
+      echo "required"
+    else
+      echo "optional"
+    fi
+  }
+
   require_for_dev() {
-    [[ "$ARCHDEV_DOCTOR_PROFILE" == "dev" || "$ARCHDEV_DOCTOR_PROFILE" == "full" ]]
+    [[ "$ARCHDEV_FEATURE_DEV" == "true" ]]
   }
 
   require_for_full() {
-    [[ "$ARCHDEV_DOCTOR_PROFILE" == "full" ]]
+    [[ "$ARCHDEV_FEATURE_FULL" == "true" ]]
   }
 
   is_virtualized_guest() {
@@ -608,12 +868,45 @@ check_file() {
   echo ">>> ArchDev doctor"
   echo "[info] perfil activo: ${ARCHDEV_DOCTOR_PROFILE}"
   echo "[info] hardware: ${ARCHDEV_DOCTOR_HARDWARE_TYPE} / graficos: ${ARCHDEV_DOCTOR_GRAPHICS_MODE}"
+  echo "[info] features: desktop=${ARCHDEV_FEATURE_DESKTOP} dev=${ARCHDEV_FEATURE_DEV} laravel=${ARCHDEV_FEATURE_LARAVEL} postgresql=${ARCHDEV_FEATURE_POSTGRESQL} docker=${ARCHDEV_FEATURE_DOCKER} opencode=${ARCHDEV_FEATURE_OPENCODE} redis=${ARCHDEV_FEATURE_REDIS} dbeaver=${ARCHDEV_FEATURE_DBEAVER}"
 
   section "Base"
   check_cmd ansible
   check_cmd git
   check_cmd curl
   check_cmd sudo
+
+  section "Contexto Declarativo"
+  if [[ -d "$PROFILES_DIR" ]]; then
+    echo "[ok] diretório de perfis: $PROFILES_DIR"
+  else
+    echo "[falha] diretório de perfis ausente: $PROFILES_DIR"
+    failures=$((failures + 1))
+  fi
+
+  if [[ -d "$FEATURES_DIR" ]]; then
+    echo "[ok] diretório de features: $FEATURES_DIR"
+  else
+    echo "[falha] diretório de features ausente: $FEATURES_DIR"
+    failures=$((failures + 1))
+  fi
+
+  if is_valid_profile "$ARCHDEV_DOCTOR_PROFILE"; then
+    echo "[ok] perfil declarativo válido: $ARCHDEV_DOCTOR_PROFILE"
+  else
+    echo "[falha] perfil declarativo inválido: $ARCHDEV_DOCTOR_PROFILE"
+    failures=$((failures + 1))
+  fi
+
+  for feature_file in "${FEATURE_FILES[@]}"; do
+    check_file "$feature_file" "feature declarativa $(basename "$feature_file")"
+  done
+
+  if [[ -f "$HOST_VARS_FILE" ]]; then
+    echo "[ok] host_vars detectado: $HOST_VARS_FILE"
+  else
+    warn "host_vars ainda ausente para este host: $HOST_VARS_FILE"
+  fi
 
   section "Sistema"
   check_service NetworkManager
@@ -652,11 +945,11 @@ check_file() {
   check_file /boot/limine/limine.conf "configuração Limine"
 
   section "Desktop"
-  check_cmd Hyprland "Hyprland"
-  check_cmd waybar
-  check_cmd rofi
-  check_cmd kitty
-  check_cmd firefox
+  check_cmd_profiled Hyprland "Hyprland" "$(requirement_from_flag "$ARCHDEV_FEATURE_DESKTOP")"
+  check_cmd_profiled waybar "waybar" "$(requirement_from_flag "$ARCHDEV_FEATURE_DESKTOP")"
+  check_cmd_profiled rofi "rofi" "$(requirement_from_flag "$ARCHDEV_FEATURE_DESKTOP")"
+  check_cmd_profiled kitty "kitty" "$(requirement_from_flag "$ARCHDEV_FEATURE_DESKTOP")"
+  check_cmd_profiled firefox "firefox" "$(requirement_from_flag "$ARCHDEV_FEATURE_DESKTOP")"
 
   if [[ "$ARCHDEV_DOCTOR_ENABLE_GPU_OVERRIDES" == "true" ]]; then
     check_file /etc/environment.d/90-archdev-gpu.conf "override de GPU"
@@ -665,46 +958,34 @@ check_file() {
   fi
 
   section "Desenvolvimento"
-  if require_for_dev; then
-    check_cmd_profiled php "php" required
-    check_cmd_profiled composer "composer" required
-    check_cmd_profiled laravel "laravel" required
-    check_cmd_profiled python "python" required
-    check_cmd_profiled poetry "poetry" required
+  check_cmd_profiled python "python" "$(requirement_from_flag "$ARCHDEV_FEATURE_DEV")"
+  check_cmd_profiled poetry "poetry" "$(requirement_from_flag "$ARCHDEV_FEATURE_DEV")"
+  check_cmd_profiled php "php" "$(requirement_from_flag "$ARCHDEV_FEATURE_LARAVEL")"
+  check_cmd_profiled composer "composer" "$(requirement_from_flag "$ARCHDEV_FEATURE_LARAVEL")"
+  check_cmd_profiled laravel "laravel" "$(requirement_from_flag "$ARCHDEV_FEATURE_LARAVEL")"
+
+  if [[ "$ARCHDEV_FEATURE_LARAVEL" == "true" || "$ARCHDEV_FEATURE_OPENCODE" == "true" ]]; then
     check_cmd_profiled node "node" required
     check_cmd_profiled npm "npm" required
-    check_cmd_profiled opencode "opencode" required
-    check_cmd_profiled docker "docker" required
-    check_cmd_profiled psql "psql" required
-    check_cmd_profiled pg_isready "pg_isready" required
   else
-    check_cmd_profiled python "python" optional
-    check_cmd_profiled php "php" optional
-    check_cmd_profiled composer "composer" optional
-    check_cmd_profiled laravel "laravel" optional
-    check_cmd_profiled poetry "poetry" optional
     check_cmd_profiled node "node" optional
     check_cmd_profiled npm "npm" optional
-    check_cmd_profiled opencode "opencode" optional
-    check_cmd_profiled docker "docker" optional
-    check_cmd_profiled psql "psql" optional
-    check_cmd_profiled pg_isready "pg_isready" optional
   fi
 
-  if require_for_dev && command -v php >/dev/null 2>&1; then
+  check_cmd_profiled opencode "opencode" "$(requirement_from_flag "$ARCHDEV_FEATURE_OPENCODE")"
+  check_cmd_profiled docker "docker" "$(requirement_from_flag "$ARCHDEV_FEATURE_DOCKER")"
+  check_cmd_profiled psql "psql" "$(requirement_from_flag "$ARCHDEV_FEATURE_POSTGRESQL")"
+  check_cmd_profiled pg_isready "pg_isready" "$(requirement_from_flag "$ARCHDEV_FEATURE_POSTGRESQL")"
+
+  if [[ "$ARCHDEV_FEATURE_LARAVEL" == "true" ]] && command -v php >/dev/null 2>&1; then
     php -m | grep -q '^pdo_pgsql$' && echo "[ok] extensão PHP: pdo_pgsql" || { echo "[falha] extensão PHP ausente: pdo_pgsql"; failures=$((failures + 1)); }
     php -m | grep -q '^mbstring$' && echo "[ok] extensão PHP: mbstring" || { echo "[falha] extensão PHP ausente: mbstring"; failures=$((failures + 1)); }
   fi
 
-  if require_for_dev; then
-    check_service_profiled docker "docker" required
-    check_enabled_profiled docker "docker" required
-  else
-    check_service_profiled docker "docker" optional
-    check_enabled_profiled docker "docker" optional
-  fi
+  check_service_profiled docker "docker" "$(requirement_from_flag "$ARCHDEV_FEATURE_DOCKER")"
+  check_enabled_profiled docker "docker" "$(requirement_from_flag "$ARCHDEV_FEATURE_DOCKER")"
 
-  if require_for_dev && command -v docker >/dev/null 2>&1; then
+  if [[ "$ARCHDEV_FEATURE_DOCKER" == "true" ]] && command -v docker >/dev/null 2>&1; then
     if docker info >/dev/null 2>&1; then
       echo "[ok] acesso Docker sem sudo"
     else
@@ -712,15 +993,10 @@ check_file() {
     fi
   fi
 
-  if require_for_dev; then
-    check_service_profiled postgresql "postgresql" required
-    check_enabled_profiled postgresql "postgresql" required
-  else
-    check_service_profiled postgresql "postgresql" optional
-    check_enabled_profiled postgresql "postgresql" optional
-  fi
+  check_service_profiled postgresql "postgresql" "$(requirement_from_flag "$ARCHDEV_FEATURE_POSTGRESQL")"
+  check_enabled_profiled postgresql "postgresql" "$(requirement_from_flag "$ARCHDEV_FEATURE_POSTGRESQL")"
 
-  if require_for_dev && command -v pg_isready >/dev/null 2>&1; then
+  if [[ "$ARCHDEV_FEATURE_POSTGRESQL" == "true" ]] && command -v pg_isready >/dev/null 2>&1; then
     if pg_isready -q; then
       echo "[ok] PostgreSQL responde a pg_isready"
     else
@@ -729,17 +1005,10 @@ check_file() {
   fi
 
   section "Helpers"
-  if require_for_dev; then
-    check_file_profiled /usr/local/bin/archdev-postgresql-setup "archdev-postgresql-setup" required
-    check_file_profiled /usr/local/bin/archdev-bitwarden-setup "archdev-bitwarden-setup" required
-    check_file_profiled /usr/local/bin/archdev-backup-keys "archdev-backup-keys" required
-    check_file_profiled /usr/local/bin/archdev-gpu-status "archdev-gpu-status" required
-  else
-    check_file_profiled /usr/local/bin/archdev-postgresql-setup "archdev-postgresql-setup" optional
-    check_file_profiled /usr/local/bin/archdev-bitwarden-setup "archdev-bitwarden-setup" optional
-    check_file_profiled /usr/local/bin/archdev-backup-keys "archdev-backup-keys" optional
-    check_file_profiled /usr/local/bin/archdev-gpu-status "archdev-gpu-status" optional
-  fi
+  check_file_profiled /usr/local/bin/archdev-postgresql-setup "archdev-postgresql-setup" "$(requirement_from_flag "$ARCHDEV_FEATURE_POSTGRESQL")"
+  check_file_profiled /usr/local/bin/archdev-bitwarden-setup "archdev-bitwarden-setup" "$(requirement_from_flag "$ARCHDEV_FEATURE_DEV")"
+  check_file_profiled /usr/local/bin/archdev-backup-keys "archdev-backup-keys" "$(requirement_from_flag "$ARCHDEV_FEATURE_DEV")"
+  check_file_profiled /usr/local/bin/archdev-gpu-status "archdev-gpu-status" "$(requirement_from_flag "$ARCHDEV_FEATURE_DEV")"
 
   if [[ -x /usr/local/bin/archdev-gpu-status ]]; then
     /usr/local/bin/archdev-gpu-status || true
@@ -799,6 +1068,14 @@ main() {
     apply)
       shift
       cmd_apply "$@"
+      ;;
+    explain)
+      shift
+      cmd_explain "$@"
+      ;;
+    profiles)
+      shift
+      cmd_profiles "$@"
       ;;
     status)
       shift

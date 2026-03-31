@@ -15,3 +15,11 @@ archdev_enable_zram: true
 
 wlsunset_latitude: "38.7"
 wlsunset_longitude: "-9.1"
+
+# Overrides opcionais de tuning PostgreSQL para a tua máquina real
+# archdev_postgresql_shared_buffers: "4GB"
+# archdev_postgresql_effective_cache_size: "12GB"
+# archdev_postgresql_work_mem: "32MB"
+# archdev_postgresql_maintenance_work_mem: "1GB"
+# archdev_postgresql_wal_buffers: "32MB"
+# archdev_postgresql_max_connections: 200

@@ -1,7 +1,15 @@
 ---
 - name: Install developer tools base
   pacman:
-    name: "{{ packages_dev_tools + (packages_dev_tools_full if feature_full | default(false) | bool else []) }}"
+    name: >-
+      {{
+        (
+          packages_dev_tools
+          + (packages_dev_tools_full if feature_full | default(false) | bool else [])
+          + (archdev_feature_redis_packages if feature_redis | default(false) | bool else [])
+          + (archdev_feature_dbeaver_packages if feature_dbeaver | default(false) | bool else [])
+        ) | unique
+      }}
     state: present
   become: yes
   tags: [dev, tools]

@@ -9,14 +9,14 @@
   tags: [dev, tools, opencode]
 
 - name: Check if OpenCode is already installed globally
-  command: npm list -g --depth=0 opencode-ai
+  command: command -v opencode
   register: opencode_installed
   changed_when: false
   failed_when: false
   tags: [dev, tools, opencode]
 
 - name: Install OpenCode globally with npm
-  command: npm i -g opencode-ai
+  command: npm i -g {{ archdev_feature_opencode_package }}
   become: yes
   when: opencode_installed.rc != 0
   tags: [dev, tools, opencode]

@@ -1,8 +1,8 @@
 
 ########################################################################################
-# CONFIGURAÇÃO HYPRLAND - ARCH DEV (AUTO-DETECT GPU)
+# CONFIGURAÇÃO HYPRLAND - ARCH DEV
 # --------------------------------------------------------------------------------------
-# Gerado automaticamente via Ansible - GPU detectada: AMD
+# Gerado automaticamente via Ansible - modo gráfico: {{ archdev_graphics_mode | default('generic') }}
 ########################################################################################
 
 #
@@ -10,7 +10,16 @@
 #
 
 # --- MONITORES ---
-monitor=,preferred,auto,1
+{% for monitor in archdev_hyprland_monitors | default([',preferred,auto,1']) %}
+monitor={{ monitor }}
+{% endfor %}
+
+{% if (archdev_hyprland_workspace_rules | default([])) | length > 0 %}
+# Workspace rules
+{% for workspace_rule in archdev_hyprland_workspace_rules %}
+workspace={{ workspace_rule }}
+{% endfor %}
+{% endif %}
 
 
 # --- ARRANQUE AUTOMÁTICO (EXEC ONCE) ---
@@ -24,7 +33,7 @@ exec-once = wl-paste --watch cliphist store
 exec-once = network-manager-applet & nm-applet --indicator
 exec-once = /usr/lib/polkit-kde-authentication-agent-1
 exec-once = hypridle
-# Night Mode Dinâmico (Filtro de luz azul adaptativo à hora de Lisboa: 38.7,-9.1)
+# Night Mode Dinâmico (Filtro de luz azul adaptativo às coordenadas do host)
 {% if archdev_enable_wlsunset | default(true) | bool %}
 exec-once = wlsunset -l {{ wlsunset_latitude | default('38.7') }} -L {{ wlsunset_longitude | default('-9.1') }} &
 {% endif %}
